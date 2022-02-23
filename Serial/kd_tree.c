@@ -45,7 +45,7 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
             node->axis = axis; //not interesting: I keep latest axis value.
             node->split.coord[0] = points[startIndex].coord[0];
             node->split.coord[1] = points[startIndex].coord[1];
-            //printf("N=1: (%.2f, %.2f)\n",points[0].coord[0],points[0].coord[1]);
+            PRINTF("N=1: (%.2f, %.2f)\n",points[0].coord[0],points[0].coord[1]);
         }else{
             // implement the choice for splitting point and dimension
             int myaxis = choose_splitting_dimension( points, ndim, axis, N); //the splitting dimension
@@ -58,38 +58,40 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
             while (j<=finalIndex && notFound){
                 points[j].coord[myaxis] == mypoint->coord[myaxis] ? notFound = 0 : j++;
             }
-            //printf("j found at: %d \n", j);
+            PRINTF("j found at: %d \n", j);
             int N_left = j - startIndex;
             int N_right= finalIndex - j;
 
-            // printf("Array has size %d and is composed by:\n", N);
-            // for(int j = startIndex; j < finalIndex +1 ; j++) {
-            //     printf("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
-            // }
-            // printf("\n");
+            #if defined(DEBUG)
+            PRINTF("Array has size %d and is composed by:\n", N);
+            for(int j = startIndex; j < finalIndex +1 ; j++) {
+                PRINTF("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
+            }
+            PRINTF("\n");
+            #endif
 
             node->axis = myaxis;
             node->split = *mypoint; // here we save a data point
 
             if(N_left == 0){
                 node->left = NULL;
-                //printf("L NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+                PRINTF("L NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             }else if(N_left > 0){
-                // printf("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-                // printf("L: Start %d | End %d\n",startIndex, j - 1);
+                PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+                PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
                 node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
             }
 
             if(N_right == 0){
                 node->right = NULL;
-                //printf("R NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+                PRINTF("R NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             }else if(N_right > 0){
-                // printf("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-                // printf("R: Start %d | End %d\n",j + 1, j + N_right);
+                PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+                PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
                 node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
             }
         }
-        //printf("N>=0: (%.2f, %.2f) axis %d\n", node->split.coord[0], node->split.coord[1], node->axis);
+        PRINTF("N>=0: (%.2f, %.2f) axis %d\n", node->split.coord[0], node->split.coord[1], node->axis);
         return node;
     }
 
@@ -131,13 +133,13 @@ int choose_splitting_dimension( struct kpoint *points, int ndim, int axis, int N
     }else{
         // otherwise keep previous dimension
         if(axis == -1){
-            //printf("Axis choice: prima %d, poi %d\n", axis, myaxis);
-            return 0;
+            myaxis = 0;
+            PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
+            return myaxis;
         }
         myaxis = axis;
-        //PRINTF("Warning: threashold for dimension extent missed\n");
     }
-    //printf("Axis choice: prima %d, poi %d\n", axis, myaxis);
+    PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
     return myaxis;
 }
 

@@ -3,9 +3,14 @@
 #include "kd_tree.h"
 #include <stdlib.h>
 
+#if defined(DEBUG)
+#define PRINTF(...) printf(__VA_ARGS__);
+#else
+#define PRINTF(...)
+#endif
 #define NDIM 2
 #define MAX 25
-#define NDATAPOINT 10//100000000 //10^8
+#define NDATAPOINT 100000000 //10^8
 /*
 CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 
@@ -54,14 +59,17 @@ int main(){
 
     struct kpoint *data = genRandomKPoints(n);
 
-    // printf("Array randomly generated:\t");
-    // for(int j = 0; j < n; j++) {
-    //     printf("(%.2f,%.2f)\t", data[j].coord[0], data[j].coord[1]);
-    // }
-    // printf("\n");
+    #if defined(DEBUG)
+    PRINTF("Array randomly generated:\t");
+    for(int j = 0; j < n; j++) {
+        PRINTF("(%.2f,%.2f)\t", data[j].coord[0], data[j].coord[1]);
+    }
+    PRINTF("\n");
+    #endif
 
     double tstart = CPU_TIME;
     struct kdnode *kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+    //Uncomment to print tree when DEBUG but ATT: it is not adviced when n is large!
     //print_kdtree(kdtree);
     double tend = CPU_TIME;
 
@@ -74,7 +82,7 @@ int main(){
 
 void print_kdtree(struct kdnode * tree){
     if (tree == NULL){
-        printf("blank\n");
+        PRINTF("blank\n");
         return;
     }else{
         printPasser(tree);
@@ -83,7 +91,7 @@ void print_kdtree(struct kdnode * tree){
 
 void printPasser(struct kdnode * node){
     if (node != NULL){
-        printf("Point: (%.2f,%.2f) \n", node->split.coord[0], node->split.coord[1]);
+        PRINTF("Point: (%.2f,%.2f) \n", node->split.coord[0], node->split.coord[1]);
     }else{
         return;
     }
@@ -91,11 +99,11 @@ void printPasser(struct kdnode * node){
     if (node->left != NULL){
         printPasser(node->left);
     }else{
-        printf("blank\n");
+        PRINTF("blank\n");
     }
     if (node->right != NULL){
         printPasser(node->right);
     }else{
-        printf("blank\n");
+        PRINTF("blank\n");
     }
 }

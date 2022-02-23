@@ -2,68 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-//#include <time.h> //uncomment for testing function!
 #include "medOfMed.h"
 #include "kd_tree.h"
 
+#if defined(DEBUG)
+#define PRINTF(...) printf(__VA_ARGS__);
+#else
+#define PRINTF(...)
+#endif
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
-/* TEST THE FUNCTION getMedian();
 #define MAX 25
-
-struct kpoint *genRandomKPoints(const int ndim, const int npoints){
-
-    srand48(time(NULL));
-
-    struct kpoint *points;
-    struct kpoint temp;
-
-    // allocate memory
-    if ( (points = (struct kpoint*)calloc( npoints, sizeof(struct kpoint) )) == NULL )
-       {
-         printf("I'm sorry, there is not enough memory to host %lu bytes\n",
-    	     npoints * sizeof(struct kpoint) );
-         return points;
-       }
-    
-
-    // initilaized random points doubles from 0 up to MAX, homogenously distributed among the 2 dimensions.
-    for(int i=0; i<npoints; ++i){
-        temp.coord[0] = drand48() * MAX;
-        temp.coord[1] = drand48() * MAX;
-        points[i] = temp;
-    }
-
-    return points;
-}
-
-int main()
-{
-    int ndim = NDIM, n=11;
-
-    struct kpoint *arr = genRandomKPoints(ndim, n);
-
-    printf("Array has size %d and is composed by:\n", n);
-    for(int j = 0; j < n; j++) {
-        printf("(%.2f,%.2f)\t", arr[j].coord[0], arr[j].coord[1]);
-    }
-    printf("\n");
-
-    //Get median position index for odd/even arrays
-    int k = n/2;
-
-    double midpoint = getMedian(arr, 0, n-1, k, 0);
-    //threeWaysPartition(arr, 0, n-1, 7.3);
-
-    printf("Array at the end:\n");
-    for(int j = 0; j < n; j++) {
-        printf("(%.2f,%.2f)\t", arr[j].coord[0], arr[j].coord[1]);
-    }
-    printf("\n");
-
-    printf("The median is %.2f\n", midpoint);
-    return 0;
-}
-*/
 
 // This function returns the index of the median in arr[l,...,r] using
 // QuickSort 2 ways partition based method.
@@ -107,7 +55,7 @@ struct kpoint* getMedian(struct kpoint *arr, int l, int r, int k, int axis)
  
         // Partition the array and
         // get position of pivot element in sorted array
-        int pos = threeWaysPartition(arr, l, r, medOfMed->coord[axis], axis);
+        int pos = twoWaysPartition(arr, l, r, medOfMed->coord[axis], axis);
  
  
         // If position is same as k
@@ -146,7 +94,7 @@ void swap_kpoint(struct kpoint *a, struct kpoint *b)
  
 // It searches for x in arr[l..r], and partitions the array
 // around x.
-int threeWaysPartition(struct kpoint *arr, int l, int r, double x, int axis)
+int twoWaysPartition(struct kpoint *arr, int l, int r, double x, int axis)
 {
     // Search for x in arr[l..r] and move it to end
     int i;
@@ -203,9 +151,9 @@ void findMedian(struct kpoint *arr, int n, int axis, double *midpoint_coords)
     }
 
     for (int i=0; i<n; i++){
-        array[i] = arr[i].coord[axis]; //*(arr+sizeof(struct kpoint)*i)->coord[axis];
-        //printf("array[%d]: %.2f\t", i, array[i]);
-        //printf("arr[%d].coord[%d]: %.2f\n", i, axis, arr[i].coord[axis]);
+        array[i] = arr[i].coord[axis];
+        PRINTF("array[%d]: %.2f\t", i, array[i]);
+        PRINTF("arr[%d].coord[%d]: %.2f\n", i, axis, arr[i].coord[axis]);
     }
         
     insertionSort(array, n);// Sort the array
@@ -214,8 +162,8 @@ void findMedian(struct kpoint *arr, int n, int axis, double *midpoint_coords)
     int j=0;
     int notFound=1;
     while (j<n && notFound){
-        //printf("midpoint_coords[%d]: %.2f\t", axis, midpoint_coords[axis]);
-        //printf("arr[%d].coord[%d]: %.2f\n", j, axis, arr[j].coord[axis]);
+        PRINTF("midpoint_coords[%d]: %.2f\t", axis, midpoint_coords[axis]);
+        PRINTF("arr[%d].coord[%d]: %.2f\n", j, axis, arr[j].coord[axis]);
         midpoint_coords[axis] == arr[j].coord[axis] ? notFound = 0 : j++;
     }
     free(array);

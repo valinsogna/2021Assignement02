@@ -6,7 +6,7 @@
 #define NC "\e[0m"
 
 void swap(double*, double*);
-int threeWaysPartition(struct kpoint*, int, int, double, int);
+int twoWaysPartition(struct kpoint*, int, int, double, int);
 struct kpoint *getMedian(struct kpoint*, int, int, int, int);
 void insertionSort(double[], int);
 void findMedian(struct kpoint*, int, int, double*);

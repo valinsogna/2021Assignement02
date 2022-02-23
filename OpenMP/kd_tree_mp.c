@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include "kd_tree.h"
-#include "medOfMed.h"
+#include "kd_tree_mp.h"
+#include "medOfMed_mp.h"
 #include <omp.h>
 
 #define EXTENT_DIFF_THRESHOLD 0.1
@@ -81,7 +81,8 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
                 PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
                 PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
 
-                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex){
+                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex)
+                {
 
                     PRINTF("Task runned by thread %d\n",omp_get_thread_num());
 
@@ -97,7 +98,8 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
                 PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
 
                 
-                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex){
+                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex)
+                {
 
                     PRINTF("Task runned by thread %d\n",omp_get_thread_num());
 

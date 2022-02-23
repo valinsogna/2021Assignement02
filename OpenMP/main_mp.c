@@ -5,9 +5,9 @@
 #endif
 #include <stdio.h>
 #include <time.h>
-#include "kd_tree.h"
 #include <stdlib.h>
 #include <omp.h>
+#include "kd_tree_mp.h"
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -59,16 +59,18 @@ struct kpoint *genRandomKPoints(const int npoints){
 
 int main(int argc, char **argv){
 
+    int n; 
     if ( argc > 1 )
         n = atoi(*(argv + 1));
     else
-        n=NDATAPOINT;
+        n = NDATAPOINT;
 
     struct timespec ts;
     int ndim = NDIM;
     double tend, tstart;
 
     struct kpoint *data = genRandomKPoints(n);
+    struct kdnode *kdtree;
 
     #if defined(DEBUG)
     PRINTF("Array randomly generated:\t");
@@ -79,10 +81,12 @@ int main(int argc, char **argv){
     #endif
 
     tstart = CPU_TIME;
-    #pragma omp parallel shared(data, ndim){
-        #pragma omp single{
+    #pragma omp parallel shared(data, ndim) 
+    {
+        #pragma omp single 
+        {
 
-            struct kdnode *kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+            kdtree = build_kdtree(data, ndim, -1, 0, n-1);
             
         }
     }
@@ -93,7 +97,6 @@ int main(int argc, char **argv){
 
     printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
     free(data);
-    free(kdtree);
 
     return 0;
 }

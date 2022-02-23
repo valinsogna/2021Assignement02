@@ -12,6 +12,6 @@ struct kdnode {
    struct kdnode *left, *right; // the left and right sub-trees
 };
 
-struct kdnode * build_kdtree( struct kpoint *points, int ndim, int axis , int startIndex, int finalIndex);
+struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis , int startIndex, int finalIndex);
 
 #endif

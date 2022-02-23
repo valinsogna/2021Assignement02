@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "medOfMed.h"
-#include "kd_tree.h"
+#include "medOfMed_mp.h"
+#include "kd_tree_mp.h"
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);

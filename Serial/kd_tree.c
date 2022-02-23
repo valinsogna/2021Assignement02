@@ -1,11 +1,10 @@
 #include <stdio.h>
-//#include <omp.h>
 #include <time.h>
 #include <stdlib.h>
 #include "kd_tree.h"
 #include "medOfMed.h"
 
-#define EXTENT_DIFF_THRESHOLD 0.1//
+#define EXTENT_DIFF_THRESHOLD 0.1
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
 #else
@@ -37,9 +36,9 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
         }
 
         if( N == 1 ) {
-            // printf("Array has size %d and is composed by:\n", N);
-            // printf("(%.2f,%.2f)\t", points[startIndex].coord[0], points[startIndex].coord[1]);
-            // printf("\n");
+            PRINTF("Array has size %d and is composed by:\n", N);
+            PRINTF("(%.2f,%.2f)\t", points[startIndex].coord[0], points[startIndex].coord[1]);
+            PRINTF("\n");
             // return a leaf with the point *points;
             node->left = NULL;
             node->right = NULL;
@@ -51,7 +50,6 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
             // implement the choice for splitting point and dimension
             int myaxis = choose_splitting_dimension( points, ndim, axis, N); //the splitting dimension
             struct kpoint *mypoint = choose_splitting_point( points, myaxis, N, finalIndex, startIndex); //the splitting point
-            struct kpoint *left_points, *right_points;
 
             // We individuate the left- and right- points with a 2-ways partition.
             // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:

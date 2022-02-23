@@ -1,12 +1,11 @@
 #include <stdio.h>
-//#include <omp.h>
 #include <time.h>
 #include "kd_tree.h"
 #include <stdlib.h>
 
-#define NDIM 2 //
+#define NDIM 2
 #define MAX 25
-#define NDATAPOINT 100000000 //10^8
+#define NDATAPOINT 10//100000000 //10^8
 /*
 CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 
@@ -21,7 +20,7 @@ while excluding time that the process was waiting for a CPU resource on a 'run q
 void print_kdtree(struct kdnode *kdtree);
 void printPasser(struct kdnode *node);
 
-struct kpoint *genRandomKPoints(const int ndim, const int npoints){
+struct kpoint *genRandomKPoints(const int npoints){
 
     srand48(time(NULL));
 
@@ -49,11 +48,11 @@ struct kpoint *genRandomKPoints(const int ndim, const int npoints){
 
 int main(){
 
-    struct timespec ts, myts;
+    struct timespec ts;
 
     int ndim = NDIM, n=NDATAPOINT;
 
-    struct kpoint *data = genRandomKPoints(ndim, n);
+    struct kpoint *data = genRandomKPoints(n);
 
     // printf("Array randomly generated:\t");
     // for(int j = 0; j < n; j++) {
@@ -68,34 +67,16 @@ int main(){
 
     printf("The serial kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
     free(data);
+    free(kdtree);
 
     return 0;
 }
-
-/* Print all the elements in the linked list */
-// void print_kdtree(struct kdnode *kdtree) {
-//     kdtree *current_node = kdtree;
-//     kdtree *left_node = current_node->left;
-//     kdtree *right_node = current_node->right;
-//     printf("Print tree:\n");
-//     //printf("axis: %d\n", current_node->axis);
-//     printf("(%.2f,%.2f)\n", current_node->split.coord[0], current_node->split.coord[1]);
-
-//    	while (left_node != NULL && right_node != NULL) {
-//         printf("\t/\t\t\t\t\t'\'\n");
-//         printf("(%.2f,%.2f)\t\t\t", left_node->split.coord[0], left_node->split.coord[1]);
-//         printf("(%.2f,%.2f)\n", right_node->split.coord[0], right_node->split.coord[1]);
-//         right_node = right_node->right;
-//         left_node = left_node->left;
-//     }
-// }
 
 void print_kdtree(struct kdnode * tree){
     if (tree == NULL){
         printf("blank\n");
         return;
     }else{
-        //printf("Point: (%.2f,%.2f) \n", tree->split.coord[0], tree->split.coord[1]);
         printPasser(tree);
     }
 }

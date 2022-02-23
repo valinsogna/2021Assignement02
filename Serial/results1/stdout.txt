@@ -1,1 +1,2 @@
+On a gpu node with 24 cores whilst another 24 were busy:
 The serial kd-tree building tooks 3.575e+02 of wall-clock time

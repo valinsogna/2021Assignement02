@@ -19,6 +19,6 @@ medOfMed.o: medOfMed.c medOfMed.h kd_tree.h
 	$(CC) -c medOfMed.c $(CXXFLAGS)
 
 clean:
-	rm *.x
-	rm *.o
+	rm -f *.x
+	rm -f *.o
 	clear

@@ -28,21 +28,21 @@ while excluding time that the process was waiting for a CPU resource on a 'run q
 #define CPU_TIME_th (clock_gettime( CLOCK_THREAD_CPUTIME_ID, &myts ), (double)myts.tv_sec +	\
 		     (double)myts.tv_nsec * 1e-9)
 
-void print_kdtree(struct kdnode *kdtree);
-void printPasser(struct kdnode *node);
+void print_kdtree(kdnode *kdtree);
+void printPasser(kdnode *node);
 
-struct kpoint *genRandomKPoints(const int npoints){
+kpoint *genRandomKPoints(const int npoints){
 
     srand48(time(NULL));
 
-    struct kpoint *points;
-    struct kpoint temp;
+    kpoint *points;
+    kpoint temp;
 
     // allocate memory
-    if ( (points = (struct kpoint*)malloc( npoints * sizeof(struct kpoint) )) == NULL )
+    if ( (points = (kpoint*)malloc( npoints * sizeof(kpoint) )) == NULL )
        {
          printf("I'm sorry, there is not enough memory to host %lu bytes\n",
-    	     npoints * sizeof(struct kpoint) );
+    	     npoints * sizeof( kpoint) );
          return points;
        }
     
@@ -69,8 +69,8 @@ int main(int argc, char **argv){
     int ndim = NDIM;
     double tend, tstart;
 
-    struct kpoint *data = genRandomKPoints(n);
-    struct kdnode *kdtree;
+    kpoint *data = genRandomKPoints(n);
+    kdnode *kdtree;
 
     #if defined(DEBUG)
     PRINTF("Array randomly generated:\t");
@@ -101,7 +101,7 @@ int main(int argc, char **argv){
     return 0;
 }
 
-void print_kdtree(struct kdnode * tree){
+void print_kdtree(kdnode * tree){
     if (tree == NULL){
         PRINTF("blank\n");
         return;
@@ -110,7 +110,7 @@ void print_kdtree(struct kdnode * tree){
     }
 }
 
-void printPasser(struct kdnode * node){
+void printPasser(kdnode * node){
     if (node != NULL){
         PRINTF("Point: (%.2f,%.2f) \n", node->split.coord[0], node->split.coord[1]);
     }else{

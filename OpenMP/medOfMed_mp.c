@@ -15,7 +15,7 @@
 
 // This function returns the index of the median in arr[l,...,r] using
 // QuickSort 2 ways partition based method.
-struct kpoint* getMedian(struct kpoint *arr, int l, int r, int k, int axis)
+kpoint* getMedian(kpoint *arr, int l, int r, int k, int axis)
 {
     // If k is smaller than number of elements in array
     if (k >= 0)//
@@ -25,12 +25,12 @@ struct kpoint* getMedian(struct kpoint *arr, int l, int r, int k, int axis)
         // Divide arr[] in groups of size 5, calculate median
         // of every group and store it in medians[] array.
         int i;
-        struct kpoint* medians;
-        if ( (medians = (struct kpoint*)malloc( (N+4)/5*sizeof(struct kpoint) )) == NULL ) // There will be floor((n+4)/5) groups
+        kpoint* medians;
+        if ( (medians = (kpoint*)malloc( (N+4)/5*sizeof(kpoint) )) == NULL ) // There will be floor((n+4)/5) groups
         {
             fprintf(stderr, RED "[ERROR]"
             NC  "I'm sorry, there is not enough memory to host %lu bytes\n",
-	        (N+4)/5 * sizeof(struct kpoint) );
+	        (N+4)/5 * sizeof(kpoint) );
             exit(EXIT_FAILURE);
         }
         double midpoints_coords[NDIM];
@@ -50,7 +50,7 @@ struct kpoint* getMedian(struct kpoint *arr, int l, int r, int k, int axis)
         // Find median of all medians using recursive call.
         // If median[] has only one element, then no need
         // of recursive call
-        struct kpoint *medOfMed = (i == 1)? (medians+i-1): // case in which the arr has 1 elem
+        kpoint *medOfMed = (i == 1)? (medians+i-1): // case in which the arr has 1 elem
                                  getMedian(medians, 0, i-1, i/2, axis);
  
         // Partition the array and
@@ -85,16 +85,16 @@ void swap(double *a, double *b)
     *b = temp;
 }
 
-void swap_kpoint(struct kpoint *a, struct kpoint *b)
+void swap_kpoint(kpoint *a,kpoint *b)
 {
-    struct kpoint temp = *a;
+    kpoint temp = *a;
     *a = *b;
     *b = temp;
 }
  
 // It searches for x in arr[l..r], and partitions the array
 // around x.
-int twoWaysPartition(struct kpoint *arr, int l, int r, double x, int axis)
+int twoWaysPartition(kpoint *arr, int l, int r, double x, int axis)
 {
     // Search for x in arr[l..r] and move it to end
     int i;
@@ -138,7 +138,7 @@ void insertionSort(double array[], int size) {
 
 // A simple function to find median of arr[].  This is called
 // only for an array of size 5 in this program.
-void findMedian(struct kpoint *arr, int n, int axis, double *midpoint_coords)
+void findMedian(kpoint *arr, int n, int axis, double *midpoint_coords)
 {
     double *array;
 

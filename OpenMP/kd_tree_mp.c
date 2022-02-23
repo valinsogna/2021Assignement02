@@ -12,11 +12,11 @@
 #define PRINTF(...)
 #endif
 
-int choose_splitting_dimension( struct kpoint *, int, int, int);
-double getExtent(struct kpoint *, int, int);
-struct kpoint *choose_splitting_point( struct kpoint *, int, int, int, int);
+int choose_splitting_dimension(kpoint *, int, int, int);
+double getExtent(kpoint *, int, int);
+kpoint *choose_splitting_point(kpoint *, int, int, int, int);
 
-struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int startIndex, int finalIndex ){
+kdnode *build_kdtree(kpoint *points, int ndim, int axis, int startIndex, int finalIndex ){
     /*
     * points is a pointer to the relevant section of the data set;
     * N is the number of points to be considered, from points to points+N * ndim is the number of dimensions of the data points
@@ -27,12 +27,12 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
     
     if( N >= 0){
            // Allocate the memory for a new node with classical linked-list:
-        struct kdnode *node;
-        if ( (node = (struct kdnode*)malloc(sizeof(struct kdnode))) == NULL )
+        kdnode *node;
+        if ( (node = (kdnode*)malloc(sizeof(kdnode))) == NULL )
         {
             fprintf(stderr, RED "[ERROR]"
                 NC  "I'm sorry, there is not enough memory to host %lu bytes\n",
-	         sizeof(struct kdnode) );
+	         sizeof(kdnode) );
             exit(EXIT_FAILURE);
         }
 
@@ -50,7 +50,7 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
         }else{
             // implement the choice for splitting point and dimension
             int myaxis = choose_splitting_dimension( points, ndim, axis, N); //the splitting dimension
-            struct kpoint *mypoint = choose_splitting_point( points, myaxis, N, finalIndex, startIndex); //the splitting point
+            kpoint *mypoint = choose_splitting_point( points, myaxis, N, finalIndex, startIndex); //the splitting point
 
             // We individuate the left- and right- points with a 2-ways partition.
             // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
@@ -119,17 +119,17 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
 
 }
 
-struct kpoint *choose_splitting_point( struct kpoint *points, int axis, int N, int finalIndex, int startIndex){
+kpoint *choose_splitting_point( kpoint *points, int axis, int N, int finalIndex, int startIndex){
 
     //Get median position index for odd/even arrays
     int k = N/2;
 
-    struct kpoint *midpoint = getMedian(points, startIndex, finalIndex, k, axis);
+    kpoint *midpoint = getMedian(points, startIndex, finalIndex, k, axis);
 
     return midpoint;
 }
 
-int choose_splitting_dimension( struct kpoint *points, int ndim, int axis, int N){
+int choose_splitting_dimension( kpoint *points, int ndim, int axis, int N){
     // axis is the splitting dimension from the previous call
     // ( Choose -1 for the first call)
 
@@ -159,7 +159,7 @@ int choose_splitting_dimension( struct kpoint *points, int ndim, int axis, int N
     return myaxis;
 }
 
-double getExtent(struct kpoint *points, int dim, int N){
+double getExtent(kpoint *points, int dim, int N){
     
     double maxValue = points[0].coord[dim];
     for(int j = 1; j < N; j++) {

@@ -2,16 +2,19 @@
 #define KD_TREE_MP_H
 
 #define NDIM 2
+typedef struct kdnode kdnode;
+typedef struct kpoint kpoint;
 
-struct kpoint {//
+struct kpoint{
     double coord[NDIM];
 };
-struct kdnode {
+
+struct kdnode{
    int axis; // the splitting dimension
-   struct kpoint split; // the splitting element
-   struct kdnode *left, *right; // the left and right sub-trees
+   kpoint split; // the splitting element
+   kdnode *left, *right; // the left and right sub-trees
 };
 
-struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis , int startIndex, int finalIndex);
+kdnode *build_kdtree( kpoint *points, int ndim, int axis , int startIndex, int finalIndex);
 
 #endif

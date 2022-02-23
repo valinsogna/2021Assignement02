@@ -1,3 +1,8 @@
+#if defined(__STDC__)
+#  if (__STDC_VERSION__ >= 199901L)
+#     define _XOPEN_SOURCE 700
+#  endif
+#endif
 #include <stdio.h>
 #include <time.h>
 #include "kd_tree.h"

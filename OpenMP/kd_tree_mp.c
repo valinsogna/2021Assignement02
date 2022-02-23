@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "kd_tree.h"
 #include "medOfMed.h"
+#include <omp.h>
 
 #define EXTENT_DIFF_THRESHOLD 0.1
 #if defined(DEBUG)
@@ -79,7 +80,13 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
             }else if(N_left > 0){
                 PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
                 PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
-                node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
+
+                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex){
+
+                    PRINTF("Task runned by thread %d\n",omp_get_thread_num());
+
+                    node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
+                }
             }
 
             if(N_right == 0){
@@ -88,7 +95,14 @@ struct kdnode *build_kdtree( struct kpoint *points, int ndim, int axis, int star
             }else if(N_right > 0){
                 PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
                 PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
-                node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+
+                
+                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex){
+
+                    PRINTF("Task runned by thread %d\n",omp_get_thread_num());
+
+                    node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+                }
             }
         }
         PRINTF("N>=0: (%.2f, %.2f) axis %d\n", node->split.coord[0], node->split.coord[1], node->axis);

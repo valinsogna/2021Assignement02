@@ -56,11 +56,16 @@ struct kpoint *genRandomKPoints(const int npoints){
     return points;
 }
 
-int main(){
+int main(int argc, char **argv){
+
+    if ( argc > 1 )
+        n = atoi(*(argv + 1));
+    else
+        n=NDATAPOINT;
 
     struct timespec ts;
 
-    int ndim = NDIM, n=NDATAPOINT;
+    int ndim = NDIM;
 
     struct kpoint *data = genRandomKPoints(n);
 
@@ -78,7 +83,7 @@ int main(){
     //print_kdtree(kdtree);
     double tend = CPU_TIME;
 
-    printf("The serial kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
+    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
     free(data);
     free(kdtree);
 

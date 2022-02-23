@@ -26,7 +26,7 @@ struct kpoint* getMedian(struct kpoint *arr, int l, int r, int k, int axis)
         // of every group and store it in medians[] array.
         int i;
         struct kpoint* medians;
-        if ( (medians = (struct kpoint*)calloc( (N+4)/5, sizeof(struct kpoint) )) == NULL ) // There will be floor((n+4)/5) groups
+        if ( (medians = (struct kpoint*)malloc( (N+4)/5*sizeof(struct kpoint) )) == NULL ) // There will be floor((n+4)/5) groups
         {
             fprintf(stderr, RED "[ERROR]"
             NC  "I'm sorry, there is not enough memory to host %lu bytes\n",
@@ -142,7 +142,7 @@ void findMedian(struct kpoint *arr, int n, int axis, double *midpoint_coords)
 {
     double *array;
 
-    if ( (array = (double*)calloc( n, sizeof(double) )) == NULL)
+    if ( (array = (double*)malloc( n*sizeof(double) )) == NULL)
     {
         fprintf(stderr, RED "[ERROR]"
             NC  "I'm sorry, there is not enough memory to host %lu bytes\n",

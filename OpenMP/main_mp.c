@@ -7,6 +7,7 @@
 #include <time.h>
 #include "kd_tree.h"
 #include <stdlib.h>
+#include <omp.h>
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -21,11 +22,11 @@ CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 
 while excluding time that the process was waiting for a CPU resource on a 'run queue'.
 */
-#define CPU_TIME (clock_gettime( CLOCK_PROCESS_CPUTIME_ID, &ts ), (double)ts.tv_sec + \
+#define CPU_TIME (clock_gettime( CLOCK_REALTIME, &ts ), (double)ts.tv_sec + \
 		  (double)ts.tv_nsec * 1e-9)
 
-#define CPU_REALTIME (clock_gettime( CLOCK_REALTIME, &ts ), (double)ts.tv_sec + \
-		  (double)ts.tv_nsec * 1e-9)
+#define CPU_TIME_th (clock_gettime( CLOCK_THREAD_CPUTIME_ID, &myts ), (double)myts.tv_sec +	\
+		     (double)myts.tv_nsec * 1e-9)
 
 void print_kdtree(struct kdnode *kdtree);
 void printPasser(struct kdnode *node);
@@ -38,7 +39,7 @@ struct kpoint *genRandomKPoints(const int npoints){
     struct kpoint temp;
 
     // allocate memory
-    if ( (points = (struct kpoint*)calloc( npoints, sizeof(struct kpoint) )) == NULL )
+    if ( (points = (struct kpoint*)malloc( npoints * sizeof(struct kpoint) )) == NULL )
        {
          printf("I'm sorry, there is not enough memory to host %lu bytes\n",
     	     npoints * sizeof(struct kpoint) );
@@ -56,11 +57,16 @@ struct kpoint *genRandomKPoints(const int npoints){
     return points;
 }
 
-int main(){
+int main(int argc, char **argv){
+
+    if ( argc > 1 )
+        n = atoi(*(argv + 1));
+    else
+        n=NDATAPOINT;
 
     struct timespec ts;
-
-    int ndim = NDIM, n=NDATAPOINT;
+    int ndim = NDIM;
+    double tend, tstart;
 
     struct kpoint *data = genRandomKPoints(n);
 
@@ -72,13 +78,20 @@ int main(){
     PRINTF("\n");
     #endif
 
-    double tstart = CPU_TIME;
-    struct kdnode *kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+    tstart = CPU_TIME;
+    #pragma omp parallel shared(data, ndim){
+        #pragma omp single{
+
+            struct kdnode *kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+            
+        }
+    }
+    tend = CPU_TIME;
     //Uncomment to print tree when DEBUG but ATT: it is not adviced when n is large!
     //print_kdtree(kdtree);
-    double tend = CPU_TIME;
 
-    printf("The serial kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
+
+    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
     free(data);
     free(kdtree);
 

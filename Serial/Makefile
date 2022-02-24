@@ -9,7 +9,7 @@ debug: executable
 executable: main.o kd_tree.o medOfMed.o
 	$(CC) main.o kd_tree.o medOfMed.o -o main.x
 
-main.o: main.c kd_tree.h
+main.o: main.c kd_tree.h medOfMed.h
 	$(CC) -c main.c $(CXXFLAGS)
 
 kd_tree.o: kd_tree.c medOfMed.h kd_tree.h

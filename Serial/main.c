@@ -7,6 +7,7 @@
 #include <time.h>
 #include "kd_tree.h"
 #include <stdlib.h>
+#include "medOfMed.h"
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -65,8 +66,8 @@ int main(int argc, char **argv){
         n = NDATAPOINT;
 
     struct timespec ts;
-
     int ndim = NDIM;
+    FILE *fptr;
 
     struct kpoint *data = genRandomKPoints(n);
 
@@ -83,8 +84,19 @@ int main(int argc, char **argv){
     //Uncomment to print tree when DEBUG but ATT: it is not adviced when n is large!
     //print_kdtree(kdtree);
     double tend = CPU_TIME;
+    //double time = ;
 
     printf("The serial kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
+    fptr = fopen("./time.dat","a");
+    if(fptr == NULL){
+        fprintf(stderr, RED "[ERROR]"
+            NC  "Could not open file ./time.out\n"
+	    );
+        exit(EXIT_FAILURE);         
+    }
+    fprintf(fptr,"%9.3e",tend - tstart);
+    fclose(fptr);
+
     free(data);
     free(kdtree);
 

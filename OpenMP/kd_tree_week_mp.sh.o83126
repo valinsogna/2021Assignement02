@@ -1,0 +1,4 @@
+rm -f *.x
+rm -f *.o
+clear
+gcc -fopenmp main_mp.c kd_tree_mp.c medOfMed_mp.c -o main_mp.x -Wall -Wextra -std=c99

@@ -16,7 +16,7 @@
 #endif
 #define NDIM 2
 #define MAX 25
-#define NDATAPOINT 100000000 //10^8
+#define NDATAPOINT 7 //100000000 //10^8
 /*
 CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 

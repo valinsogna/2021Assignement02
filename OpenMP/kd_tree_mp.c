@@ -51,7 +51,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
         if( N == 2 ) {// return a node prior to a leaf with the point *points;
             PRINTF("Array has size %d and is composed by:\n", N);
-            PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]), 
+            PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1], 
             points[finalIndex].coord[0], points[finalIndex].coord[1]);
 
             if(points[startIndex].coord[axis] > points[finalIndex].coord[axis])
@@ -134,12 +134,12 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
 }
 
-int choose_splitting_point( kpoint *points, short int axis, int N, int finalIndex, int startIndex){
+kpoint *choose_splitting_point( kpoint *points, short int axis, int N, int finalIndex, int startIndex){
 
     //Get median position index for odd/even arrays
     int k = N/2;
 
-    kpoint * midpoint = getMedian(points, startIndex, finalIndex, k, axis);
+    kpoint *midpoint = getMedian(points, startIndex, finalIndex, k, axis);
 
     return midpoint;
 }

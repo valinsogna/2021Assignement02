@@ -15,7 +15,7 @@
 
 // This function returns the index of the median in arr[l,...,r] using
 // QuickSort 2 ways partition based method.
-kpoint* getMedian(kpoint *arr, int l, int r, int k, int axis)
+kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
 {
     // If k is smaller than number of elements in array
     if (k >= 0)//
@@ -94,7 +94,7 @@ void swap_kpoint(kpoint *a,kpoint *b)
  
 // It searches for x in arr[l..r], and partitions the array
 // around x.
-int twoWaysPartition(kpoint *arr, int l, int r, double x, int axis)
+int twoWaysPartition(kpoint *arr, int l, int r, double x, short int axis)
 {
     // Search for x in arr[l..r] and move it to end
     int i;
@@ -138,7 +138,7 @@ void insertionSort(double array[], int size) {
 
 // A simple function to find median of arr[].  This is called
 // only for an array of size 5 in this program.
-void findMedian(kpoint *arr, int n, int axis, double *midpoint_coords)
+void findMedian(kpoint *arr, int n, short int axis, double *midpoint_coords)
 {
     double *array;
 

@@ -95,7 +95,7 @@ kpoint *genRandomKPoints(unsigned int npoints){
     
 
     // initilaized random points doubles from 0 up to MAX, homogenously distributed among the 2 dimensions.
-    for(int i=0; i<npoints; ++i){
+    for(unsigned int i=0; i<npoints; ++i){
         temp.coord[0] = drand48() * MAX;
         temp.coord[1] = drand48() * MAX;
         points[i] = temp;

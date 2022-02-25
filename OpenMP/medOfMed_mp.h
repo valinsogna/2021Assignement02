@@ -7,9 +7,9 @@
 
 void swap(double*, double*);
 int twoWaysPartition(kpoint*, int, int, double, short int);
-int getMedianIndex(kpoint*, int, int, int, short int);
+kpoint *getMedian(kpoint*, int, int, int, short int);
 void insertionSort(double[], int);
-int findMedian(kpoint*, int, short int, double*);
+void findMedian(kpoint*, int, short int, double*);
 void swap_kpoint(kpoint *, kpoint *);
 
 #endif

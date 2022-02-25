@@ -2,7 +2,7 @@
  
 #PBS -q dssc_gpu
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=0:12:00
+#PBS -l walltime=0:30:00
 
 cd $PBS_O_WORKDIR 
 mkdir -p results_lin_log
@@ -14,7 +14,7 @@ make all
 OUT='/u/dssc/valinsogna/2021Assignement02/Serial2.0/results_lin_log'
 #'/fast/dssc/valinsogna/2021Assignement02/Serial2.0/results_lin_log'
 #pbsnodes -ajS
-#qsub -l nodes=1:ppn=12 -I -l walltime=0:10:00 -q dssc_gpu
+#qsub -l nodes=1:ppn=12 -I -l walltime=0:30:00 -q dssc_gpu
 
 #start=100
 

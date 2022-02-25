@@ -7,7 +7,7 @@ debug: CXXFLAGS += -DDEBUG -g
 debug: executable
 
 executable:
-	$(CC) main.c kd_tree.c medOfMed.c -o main.x $(CXXFLAGS)
+	$(CC) $(CXXFLAGS) main.c kd_tree.c medOfMed.c -o main.x
 
 # executable: main.o kd_tree.o medOfMed.o
 # 	$(CC) main.o kd_tree.o medOfMed.o -o main.x

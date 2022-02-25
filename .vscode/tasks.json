@@ -6,7 +6,6 @@
             "command": "/usr/bin/gcc",
             "args": [
                 "-fdiagnostics-color=always",
-                "-fopenmp",
                 "*.c",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
@@ -14,6 +13,7 @@
                 "-Wall",
                 "-Wextra",
                 "-std=c99",
+                "-O3",
             ],
             "options": {
                 "cwd": "${fileDirname}"

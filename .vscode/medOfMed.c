@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "medOfMed_mp.h"
-#include "kd_tree_mp.h"
+#include "medOfMed.h"
+#include "kd_tree.h"
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -15,7 +15,7 @@
 
 // This function returns the index of the median in arr[l,...,r] using
 // QuickSort 2 ways partition based method.
-kpoint* getMedian(kpoint *arr, int l, int r, int k, int axis)
+kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
 {
     // If k is smaller than number of elements in array
     if (k >= 0)//
@@ -94,7 +94,7 @@ void swap_kpoint(kpoint *a,kpoint *b)
  
 // It searches for x in arr[l..r], and partitions the array
 // around x.
-int twoWaysPartition(kpoint *arr, int l, int r, double x, int axis)
+int twoWaysPartition(kpoint *arr, int l, int r, double x, short int axis)
 {
     // Search for x in arr[l..r] and move it to end
     int i;
@@ -138,7 +138,7 @@ void insertionSort(double array[], int size) {
 
 // A simple function to find median of arr[].  This is called
 // only for an array of size 5 in this program.
-void findMedian(kpoint *arr, int n, int axis, double *midpoint_coords)
+void findMedian(kpoint *arr, int n, short int axis, double *midpoint_coords)
 {
     double *array;
 
@@ -158,17 +158,26 @@ void findMedian(kpoint *arr, int n, int axis, double *midpoint_coords)
         
     insertionSort(array, n);// Sort the array
     midpoint_coords[axis] = array[n/2]; // Return middle element
-
-    int j=0;
-    int notFound=1;
-    while (j<n && notFound){
-        PRINTF("midpoint_coords[%d]: %.2f\t", axis, midpoint_coords[axis]);
-        PRINTF("arr[%d].coord[%d]: %.2f\n", j, axis, arr[j].coord[axis]);
-        midpoint_coords[axis] == arr[j].coord[axis] ? notFound = 0 : j++;
+    midpoint_coords[(axis+1)%NDIM] = arr[n/2].coord[(axis+1)%NDIM];//a caso, tanto non importa
+    
+    for (int i=0; i<n; i++){
+        array[i] = arr[i].coord[axis];
+        PRINTF("array[%d]: %.2f\t", i, array[i]);
+        PRINTF("arr[%d].coord[%d]: %.2f\n", i, axis, arr[i].coord[axis]);
     }
+    PRINTF("array[%d]: %.2f\t", n/2, array[n/2]);
+    PRINTF("arr[%d].coord[%d]: %.2f\n", n/2, (axis+1)%NDIM, midpoint_coords[(axis+1)%NDIM]);
+
+    // int j=0;
+    // int notFound=1;
+    // while (j<n && notFound){
+    //     PRINTF("midpoint_coords[%d]: %.2f\t", axis, midpoint_coords[axis]);
+    //     PRINTF("arr[%d].coord[%d]: %.2f\n", j, axis, arr[j].coord[axis]);
+    //     midpoint_coords[axis] == arr[j].coord[axis] ? notFound = 0 : j++;
+    // }
     free(array);
     //Save vector
-    midpoint_coords[(axis+1)%NDIM] = arr[j].coord[(axis+1)%NDIM];
+    //midpoint_coords[(axis+1)%NDIM] = arr[j].coord[(axis+1)%NDIM];
 
     return;
 }

@@ -38,7 +38,9 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         if( N == 1 ) {// return a leaf with the point *points;
             PRINTF("Array has size %d and is composed by:\n", N);
             PRINTF("(%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]);
-        
+            if(axis == -1)
+                axis = 0;
+
             new_node->left = NULL;
             new_node->right = NULL;
             new_node->axis = axis; //not interesting: I keep latest axis value.
@@ -55,6 +57,10 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
             if(points[startIndex].coord[axis] > points[finalIndex].coord[axis])
                 swap_kpoint(&points[startIndex], &points[finalIndex]);
+            
+            if(axis == -1)
+                axis = 0;
+            
             // return a node with a leaf on the right;
             new_node->axis = axis; //not interesting: I keep latest axis value.
             new_node->split.coord[0] = points[startIndex].coord[0];

@@ -21,7 +21,7 @@ kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
     if (k >= 0)//
     {
         int N = r-l+1; // Number of elements in arr[l..r]
- 
+        PRINTF("N: %d, r: %d,l: %d\n", N,r,l);
         // Divide arr[] in groups of size 5, calculate median
         // of every group and store it in medians[] array.
         int i;
@@ -35,12 +35,14 @@ kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
         }
         double midpoints_coords[NDIM];
         for (i=0; i<N/5; i++){
+            PRINTF("Sono 5\n");
             findMedian(arr+l+i*5, 5, axis, midpoints_coords);
             medians[i].coord[axis] = midpoints_coords[axis];
             medians[i].coord[(axis+1)%NDIM] = midpoints_coords[(axis+1)%NDIM];
         }
         if (i*5 < N) //For last group (i=N/5) with less than 5 elements
         {
+            PRINTF("Sono meno di 5: %d\n", N%5);
             findMedian(arr+l+i*5, N%5, axis, midpoints_coords);
             medians[i].coord[axis] = midpoints_coords[axis];
             medians[i].coord[(axis+1)%NDIM] = midpoints_coords[(axis+1)%NDIM];
@@ -158,16 +160,14 @@ void findMedian(kpoint *arr, int n, short int axis, double *midpoint_coords)
         
     insertionSort(array, n);// Sort the array
     midpoint_coords[axis] = array[n/2]; // Return middle element
-    midpoint_coords[(axis+1)%NDIM] = arr[n/2].coord[(axis+1)%NDIM];//a caso, tanto non importa
+    midpoint_coords[(axis+1)%NDIM] = 0;//a caso, tanto non importa
     
     #if defined(DEBUG)
     for (int i=0; i<n; i++){
-        PRINTF("array[%d]: %.2f\t", i, array[i]);
-        PRINTF("arr[%d].coord[%d]: %.2f\n", i, axis, arr[i].coord[axis]);
+        PRINTF("array[%d]: %.2f\n", i, array[i]);
     }
     #endif
-    PRINTF("array[%d]: %.2f\t", n/2, array[n/2]);
-    PRINTF("arr[%d].coord[%d]: %.2f\n", n/2, (axis+1)%NDIM, midpoint_coords[(axis+1)%NDIM]);
+    PRINTF("midpoint_coords at index %d in array: %.2f\n", n/2, array[n/2]);
 
     // int j=0;
     // int notFound=1;

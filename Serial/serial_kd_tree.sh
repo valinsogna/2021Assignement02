@@ -7,6 +7,7 @@
 cd $PBS_O_WORKDIR 
 mkdir -p results_lin_log
 rm -f serial_kd_tree.sh.*
+module load gnu/9.3.0
 make clean
 make all
 

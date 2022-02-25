@@ -8,6 +8,7 @@
 cd $PBS_O_WORKDIR
 rm -f kd_tree_week_mp.sh.*
 mkdir -p results_week
+module load gnu/9.3.0
 
 export OMP_PLACES=cores
 export OMP_PROC_BIND=true

@@ -1,6 +1,0 @@
-TERM environment variable not set.
-make: *** [clean] Error 1
-main_mp.c: In function ‘main’:
-main_mp.c:73:13: warning: variable ‘kdtree’ set but not used [-Wunused-but-set-variable]
-     kdnode *kdtree;
-             ^

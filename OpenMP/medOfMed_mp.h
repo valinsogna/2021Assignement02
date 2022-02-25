@@ -6,10 +6,10 @@
 #define NC "\e[0m"
 
 void swap(double*, double*);
-int twoWaysPartition(kpoint*, int, int, double, int);
-kpoint *getMedian(kpoint*, int, int, int, int);
+int twoWaysPartition(kpoint*, int, int, double, short int);
+int getMedianIndex(kpoint*, int, int, int, short int);
 void insertionSort(double[], int);
-void findMedian(kpoint*, int, int, double*);
+int findMedian(kpoint*, int, short int, double*);
 void swap_kpoint(kpoint *, kpoint *);
 
 #endif

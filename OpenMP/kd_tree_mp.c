@@ -12,11 +12,11 @@
 #define PRINTF(...)
 #endif
 
-int choose_splitting_dimension(kpoint *, int, int, int);
+short int choose_splitting_dimension(kpoint *, int, short int, int);
 double getExtent(kpoint *, int, int);
-kpoint *choose_splitting_point(kpoint *, int, int, int, int);
+kpoint *choose_splitting_point(kpoint *, short int, int, int, int);
 
-kdnode *build_kdtree(kpoint *points, int ndim, int axis, int startIndex, int finalIndex ){
+kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex ){
     /*
     * points is a pointer to the relevant section of the data set;
     * N is the number of points to be considered, from points to points+N * ndim is the number of dimensions of the data points
@@ -26,9 +26,9 @@ kdnode *build_kdtree(kpoint *points, int ndim, int axis, int startIndex, int fin
     int N = finalIndex-startIndex+1; // Number of elements in arr[startIndex..startIndex]
     
     if( N >= 0){
-           // Allocate the memory for a new node with classical linked-list:
-        kdnode *node;
-        if ( (node = (kdnode*)malloc(sizeof(kdnode))) == NULL )
+        // Allocate the memory for a new node with a classical linked-list:
+        kdnode *new_node;
+        if ( (new_node = (kdnode*)malloc(sizeof(kdnode))) == NULL )
         {
             fprintf(stderr, RED "[ERROR]"
                 NC  "I'm sorry, there is not enough memory to host %lu bytes\n",
@@ -36,79 +36,94 @@ kdnode *build_kdtree(kpoint *points, int ndim, int axis, int startIndex, int fin
             exit(EXIT_FAILURE);
         }
 
-        if( N == 1 ) {
+        if( N == 1 ) {// return a leaf with the point *points;
             PRINTF("Array has size %d and is composed by:\n", N);
-            PRINTF("(%.2f,%.2f)\t", points[startIndex].coord[0], points[startIndex].coord[1]);
-            PRINTF("\n");
-            // return a leaf with the point *points;
-            node->left = NULL;
-            node->right = NULL;
-            node->axis = axis; //not interesting: I keep latest axis value.
-            node->split.coord[0] = points[startIndex].coord[0];
-            node->split.coord[1] = points[startIndex].coord[1];
-            PRINTF("N=1: (%.2f, %.2f)\n",points[0].coord[0],points[0].coord[1]);
-        }else{
-            // implement the choice for splitting point and dimension
-            int myaxis = choose_splitting_dimension( points, ndim, axis, N); //the splitting dimension
-            kpoint *mypoint = choose_splitting_point( points, myaxis, N, finalIndex, startIndex); //the splitting point
+            PRINTF("(%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]);
+        
+            new_node->left = NULL;
+            new_node->right = NULL;
+            new_node->axis = axis; //not interesting: I keep latest axis value.
+            new_node->split.coord[0] = points[startIndex].coord[0];
+            new_node->split.coord[1] = points[startIndex].coord[1];
+            PRINTF("N=1: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
+            return new_node;
+        }
 
-            // We individuate the left- and right- points with a 2-ways partition.
-            // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
-            int j=startIndex;
-            int notFound=1;
-            while (j<=finalIndex && notFound){
-                points[j].coord[myaxis] == mypoint->coord[myaxis] ? notFound = 0 : j++;
-            }
-            PRINTF("j found at: %d \n", j);
-            int N_left = j - startIndex;
-            int N_right= finalIndex - j;
-
-            #if defined(DEBUG)
+        if( N == 2 ) {// return a node prior to a leaf with the point *points;
             PRINTF("Array has size %d and is composed by:\n", N);
-            for(int j = startIndex; j < finalIndex +1 ; j++) {
-                PRINTF("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
-            }
-            PRINTF("\n");
-            #endif
+            PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]), 
+            points[finalIndex].coord[0], points[finalIndex].coord[1]);
 
-            node->axis = myaxis;
-            node->split = *mypoint; // here we save a data point
+            if(points[startIndex].coord[axis] > points[finalIndex].coord[axis])
+                swap_kpoint(&points[startIndex], &points[finalIndex]);
+            // return a node with a leaf on the right;
+            new_node->axis = axis; //not interesting: I keep latest axis value.
+            new_node->split.coord[0] = points[startIndex].coord[0];
+            new_node->split.coord[1] = points[startIndex].coord[1];
+            new_node->left = NULL;
+            new_node->right = build_kdtree( points, ndim, axis, finalIndex, finalIndex);
 
-            if(N_left == 0){
-                node->left = NULL;
-                PRINTF("L NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-            }else if(N_left > 0){
-                PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-                PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
+            PRINTF("N=2: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
+            return new_node;
+        }
+        
+        // implement the choice for splitting point and dimension
+        short int myaxis = choose_splitting_dimension( points, ndim, axis, N); //the splitting dimension
+        kpoint *mypoint = choose_splitting_point( points, myaxis, N, finalIndex, startIndex); //the splitting point
+        
 
-                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex)
-                {
+        // We individuate the left- and right- points with a 2-ways partition.
+        // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
+        int j=N/2;
+        // int notFound=1;
+        // while (j<=finalIndex && notFound){
+        //     points[j].coord[myaxis] == mypoint->coord[myaxis] ? notFound = 0 : j++;
+        // }
+        // PRINTF("j found at: %d \n", j);
 
-                    PRINTF("Task runned by thread %d\n",omp_get_thread_num());
+        int N_left = j - startIndex;
+        int N_right= finalIndex - j;
 
-                    node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
-                }
-            }
+        #if defined(DEBUG)
+        PRINTF("Array has size %d and is composed by:\n", N);
+        for(int j = startIndex; j < finalIndex +1 ; j++) {
+            PRINTF("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
+        }
+        PRINTF("\n");
+        #endif
 
-            if(N_right == 0){
-                node->right = NULL;
-                PRINTF("R NULL: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-            }else if(N_right > 0){
-                PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-                PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
+        new_node->axis = myaxis; //save the splitting dimension ion the new node
+        new_node->split = *mypoint; // here we save the kpoint of the splitting point on the new node
 
-                
-                #pragma omp task shared(ndim) firstprivate(myaxis, points, startIndex, finalIndex)
-                {
+        if(N_left > 0){
+            PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+            PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
 
-                    PRINTF("Task runned by thread %d\n",omp_get_thread_num());
+            #pragma omp task shared(ndim, points) //No need for firstprivate(myaxis, startIndex, finalIndex): they are firstprivate!
+            {
 
-                    node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
-                }
+                PRINTF("Task runned by thread %d\n",omp_get_thread_num()); // Print the thread executing (not creating) the task
+
+                new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
             }
         }
-        PRINTF("N>=0: (%.2f, %.2f) axis %d\n", node->split.coord[0], node->split.coord[1], node->axis);
-        return node;
+
+        if(N_right > 0){
+            PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+            PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
+
+                
+            #pragma omp task shared(ndim, points) // Same as above
+            {
+
+                PRINTF("Task runned by thread %d\n",omp_get_thread_num());
+
+                new_node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+            }
+        }
+
+        PRINTF("N>=0: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
+        return new_node;
     }
 
     // If k is more than the number of elements in the array
@@ -119,25 +134,25 @@ kdnode *build_kdtree(kpoint *points, int ndim, int axis, int startIndex, int fin
 
 }
 
-kpoint *choose_splitting_point( kpoint *points, int axis, int N, int finalIndex, int startIndex){
+int choose_splitting_point( kpoint *points, short int axis, int N, int finalIndex, int startIndex){
 
     //Get median position index for odd/even arrays
     int k = N/2;
 
-    kpoint *midpoint = getMedian(points, startIndex, finalIndex, k, axis);
+    kpoint * midpoint = getMedian(points, startIndex, finalIndex, k, axis);
 
     return midpoint;
 }
 
-int choose_splitting_dimension( kpoint *points, int ndim, int axis, int N){
+short int choose_splitting_dimension( kpoint *points, int ndim, short int axis, int N){
     // axis is the splitting dimension from the previous call
     // ( Choose -1 for the first call)
 
-    int myaxis;
+    short int myaxis;
     float diff;
 
-    double ext_dim1 = getExtent(points,0,N);
-    double ext_dim2 = getExtent(points,1,N);
+    float ext_dim1 = getExtent(points,0,N);
+    float ext_dim2 = getExtent(points,1,N);
 
     diff = ext_dim2 > ext_dim1? (ext_dim2 - ext_dim1) / ext_dim2 : (ext_dim1 - ext_dim2) / ext_dim1;
     /*

@@ -1,4 +1,4 @@
-CXXFLAGS = -Wall -Wextra -std=c99
+CXXFLAGS = -Wall -Wextra -std=c99 -O3
 CC = gcc
 
 all: executable

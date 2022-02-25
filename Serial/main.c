@@ -31,7 +31,7 @@ while excluding time that the process was waiting for a CPU resource on a 'run q
 void print_kdtree(struct kdnode *kdtree);
 void printPasser(struct kdnode *node);
 
-struct kpoint *genRandomKPoints(const int npoints){
+struct kpoint *genRandomKPoints(int npoints){
 
     srand48(time(NULL));
 
@@ -94,7 +94,7 @@ int main(int argc, char **argv){
 	    );
         exit(EXIT_FAILURE);         
     }
-    fprintf(fptr,"%9.3e",tend - tstart);
+    fprintf(fptr,"%9.3e\n",tend - tstart);
     fclose(fptr);
 
     free(data);

@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include <omp.h>
-#include "kd_tree_mp.h"
+#include "kd_tree.h"
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -43,6 +42,7 @@ int main(int argc, char **argv){
     struct timespec ts;
     int ndim = NDIM;
     double tend, tstart;
+    FILE *fptr;
 
     kpoint *data = genRandomKPoints(n);
     kdnode *kdtree;
@@ -56,24 +56,25 @@ int main(int argc, char **argv){
     #endif
 
     tstart = CPU_TIME;
-    #pragma omp parallel shared(data, ndim, kdtree, n) //Just to remember which are shared
-    {
-        #pragma omp single nowait // No syncro barrier at the end (!= single). Or, use master!
-        {
-            PRINTF("Threa crating the task is %d\n",omp_get_thread_num());
-
-            kdtree = build_kdtree(data, ndim, -1, 0, n-1);
-            
-        }
-    }
+    kdtree = build_kdtree(data, ndim, -1, 0, n-1);
     tend = CPU_TIME;
     //Uncomment to print tree when DEBUG but ATT: it is not adviced when n is large!
     //print_kdtree(kdtree);
-
-
     printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
-    free(data);
+
+
+    fptr = fopen("./time.dat","a");
+    if(fptr == NULL){
+        fprintf(stderr, RED "[ERROR]"
+            NC  "Could not open file ./time.out\n"
+	    );
+        exit(EXIT_FAILURE);         
+    }
+    fprintf(fptr,"%9.3e\n",tend - tstart);
+    fclose(fptr);
+
     free(kdtree);
+    free(data);
 
     return 0;
 }

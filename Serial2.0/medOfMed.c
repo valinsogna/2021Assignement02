@@ -26,6 +26,7 @@ kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
         // of every group and store it in medians[] array.
         int i;
         kpoint* medians;
+
         if ( (medians = (kpoint*)malloc( (N+4)/5*sizeof(kpoint) )) == NULL ) // There will be floor((n+4)/5) groups
         {
             fprintf(stderr, RED "[ERROR]"
@@ -33,6 +34,7 @@ kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
 	        (N+4)/5 * sizeof(kpoint) );
             exit(EXIT_FAILURE);
         }
+
         double midpoints_coords[NDIM];
         for (i=0; i<N/5; i++){
             PRINTF("Sono 5\n");
@@ -54,12 +56,25 @@ kpoint* getMedian(kpoint *arr, int l, int r, int k, short int axis)
         // of recursive call
         kpoint *medOfMed = (i == 1)? (medians+i-1): // case in which the arr has 1 elem
                                  getMedian(medians, 0, i-1, i/2, axis);
- 
+
+        // #if defined(DEBUG)
+        //     PRINTF("PRIMA\n");
+        //     for (int i=0; i<=r; i++){
+        //         PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
+        //     }
+        // #endif
+
         // Partition the array and
         // get position of pivot element in sorted array
         int pos = twoWaysPartition(arr, l, r, medOfMed->coord[axis], axis);
  
- 
+        // #if defined(DEBUG)
+        //     PRINTF("DOPO\n");
+        //     for (int i=0; i<=r; i++){
+        //         PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
+        //     }
+        // #endif
+
         // If position is same as k
         if ( pos-l == k ){
             free(medians);

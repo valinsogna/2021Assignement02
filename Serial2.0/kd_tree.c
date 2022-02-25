@@ -79,7 +79,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
         // We individuate the left- and right- points with a 2-ways partition.
         // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
-        int j=N/2;
+        int j= startIndex + N/2;
         // int notFound=1;
         // while (j<=finalIndex && notFound){
         //     points[j].coord[myaxis] == mypoint->coord[myaxis] ? notFound = 0 : j++;

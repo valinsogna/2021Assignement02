@@ -160,11 +160,12 @@ void findMedian(kpoint *arr, int n, short int axis, double *midpoint_coords)
     midpoint_coords[axis] = array[n/2]; // Return middle element
     midpoint_coords[(axis+1)%NDIM] = arr[n/2].coord[(axis+1)%NDIM];//a caso, tanto non importa
     
+    #if defined(DEBUG)
     for (int i=0; i<n; i++){
-        array[i] = arr[i].coord[axis];
         PRINTF("array[%d]: %.2f\t", i, array[i]);
         PRINTF("arr[%d].coord[%d]: %.2f\n", i, axis, arr[i].coord[axis]);
     }
+    #endif
     PRINTF("array[%d]: %.2f\t", n/2, array[n/2]);
     PRINTF("arr[%d].coord[%d]: %.2f\n", n/2, (axis+1)%NDIM, midpoint_coords[(axis+1)%NDIM]);
 

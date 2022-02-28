@@ -86,9 +86,9 @@ int main(int argc, char **argv){
 
     //#if defined(DEBUG)
     //PRINTF("Array randomly generated:\t");
-    for(unsigned int j = 0; j < n; j++) {
+    //for(unsigned int j = 0; j < n; j++) {
         //PRINTF("(%.2f,%.2f)\t", data[j].coord[0], data[j].coord[1]);
-    }
+    //}
     //PRINTF("\n");
     //#endif
 

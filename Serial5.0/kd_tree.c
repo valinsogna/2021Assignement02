@@ -193,9 +193,10 @@ int three_way_partition(kpoint *arr, double midvalue, short int axis, int startI
 double find_median(kpoint *arr, int k, short int axis, int startIndex, int finalIndex) {
 
     double pivot = arr[startIndex].coord[axis];
+    #if defined(DEBUG)
     int N = finalIndex-startIndex+1;
 
-    #if defined(DEBUG)
+    
     PRINTF("PRIMA N %d\n", N);
     for (int i=startIndex; i<=finalIndex; i++){
         PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
@@ -214,14 +215,10 @@ double find_median(kpoint *arr, int k, short int axis, int startIndex, int final
     if (pos == k)
         return pivot;
     if (pos > k){
-        int k_L = k;
-        PRINTF("k_L = %d\n", k_L);
-        return find_median(arr, k_L, axis, startIndex, pos - 1);
+        return find_median(arr, k, axis, startIndex, pos - 1);
     }
     if (pos < k){
-        int k_R = k;
-        PRINTF("k_R = %d\n", k_R);
-        return find_median(arr, k_R, axis, pos + 1, finalIndex);
+        return find_median(arr, k, axis, pos + 1, finalIndex);
     }   
     return -1;
 }
@@ -347,8 +344,7 @@ void insertion_sort(kpoint *arr, int low, int n, short int axis)
 int partition(kpoint *arr, int low, int high, short int axis)
 {
   double pivot = arr[high].coord[axis];
-  int i ,j;
-  i = low;
+  int j;
   j = low;
  
   for (int i = low; i < high; i++)

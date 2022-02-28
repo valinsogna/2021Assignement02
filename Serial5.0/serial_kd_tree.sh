@@ -17,11 +17,13 @@ OUT='/u/dssc/valinsogna/2021Assignement02/Serial5.0/results_lin_log'
 #qsub -l nodes=1:ppn=12 -I -l walltime=0:30:00 -q dssc_gpu
 
 #start=100
-
+for j in {1..9}
+do
 for i in 100 1000 10000 100000 1000000 10000000 100000000;
 do
     #a=$(( i * start ))
     ./main.x ${i} >> ${OUT}/stdout_${i}.txt
+done
 done
 # ./main.x >> ${OUT}/stdout.txt
 cat $PBS_NODEFILE >> ${OUT}/nodes_used.out

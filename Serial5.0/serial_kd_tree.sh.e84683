@@ -1,0 +1,10 @@
+TERM environment variable not set.
+make: *** [clean] Error 1
+kd_tree.c: In function ‘find_median’:
+kd_tree.c:196:9: warning: unused variable ‘N’ [-Wunused-variable]
+  196 |     int N = finalIndex-startIndex+1;
+      |         ^
+kd_tree.c: In function ‘partition’:
+kd_tree.c:350:7: warning: variable ‘i’ set but not used [-Wunused-but-set-variable]
+  350 |   int i ,j;
+      |       ^

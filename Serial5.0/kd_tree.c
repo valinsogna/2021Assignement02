@@ -141,7 +141,7 @@ kpoint *choose_splitting_point( kpoint *points, short int axis, int N, int start
     //Get median position index for odd/even arrays
     int k = 0;
     kpoint *midpoint = (kpoint*)malloc(sizeof(kpoint));
-    if(0){//N <= 30
+    if(N <= 30){//
         k = startIndex + N/2;
         #if defined(DEBUG)
             PRINTF("PRIMA\n");

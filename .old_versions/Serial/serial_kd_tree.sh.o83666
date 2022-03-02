@@ -1,0 +1,7 @@
+rm -f *.x
+rm -f *.o
+clear
+gcc -c main.c -Wall -Wextra -std=c99
+gcc -c kd_tree.c -Wall -Wextra -std=c99
+gcc -c medOfMed.c -Wall -Wextra -std=c99
+gcc main.o kd_tree.o medOfMed.o -o main.x

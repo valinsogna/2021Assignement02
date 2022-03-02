@@ -27,7 +27,7 @@ for i in {17..24};
 do
     export OMP_NUM_THREADS=${i}
     a=$(( i * start ))
-    ./main_mp.x ${a} >> ${OUT}/stdout_${i}.txt
+    ./main.x ${a} >> ${OUT}/stdout_${i}.txt
 done
 cat $PBS_NODEFILE >> ${OUT}/nodes_used.out
 

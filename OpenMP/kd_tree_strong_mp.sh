@@ -21,10 +21,11 @@ make all
 OUT='/u/dssc/valinsogna/2021Assignement02/OpenMP/results_strong'
 #'/fast/dssc/valinsogna/2021Assignement01/OpenMP/results_strong'
 
-for i in {9..24};
+for i in 1 2 4 8 16 24
+#for i in {1..24};
 do
     export OMP_NUM_THREADS=${i}
-    ./main_mp.x >> ${OUT}/stdout_${i}.txt
+    ./main.x >> ${OUT}/stdout_${i}.txt
 done
 cat $PBS_NODEFILE >> ${OUT}/nodes_used.out
 

@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "kd_tree.h"
+#include <omp.h>
 
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
@@ -15,7 +16,7 @@
 #endif
 #define NDIM 2
 #define MAX 25
-#define NDATAPOINT 10 //100000000 //10^8
+#define NDATAPOINT 100000000 //10^8
 #define PRINT_TREE 1
 #define MAX_DEPTH 4
 /*
@@ -46,43 +47,7 @@ int main(int argc, char **argv){
     FILE *fptr;
 
     kpoint *data = genRandomKPoints(n);
-    /*
-    kpoint data[33];
 
-    data[0].coord[0] = 22.93; data[0].coord[1] = 14.36; 
-    data[1].coord[0] = 24.84; data[1].coord[1] = 5.36; 
-    data[2].coord[0] = 6.37; data[2].coord[1] = 4.97; 
-    data[3].coord[0] = 22.96; data[3].coord[1] = 17.44; 
-    data[4].coord[0] = 13.91; data[4].coord[1] = 6.96; 
-    data[5].coord[0] = 20.44; data[5].coord[1] = 6.80; 
-    data[6].coord[0] = 13.01; data[6].coord[1] = 24.11; 
-    data[7].coord[0] = 0.73; data[7].coord[1] = 16.82; 
-    data[8].coord[0] = 12.13; data[8].coord[1] = 14.43; 
-    data[9].coord[0] = 17.42; data[9].coord[1] = 16.86; 
-    data[10].coord[0] = 16.60; data[10].coord[1] = 9.39; 
-    data[11].coord[0] = 21.85; data[11].coord[1] = 3.30; 
-    data[12].coord[0] = 24.42; data[12].coord[1] = 0.54; 
-    data[13].coord[0] = 22.39; data[13].coord[1] = 5.24; 
-    data[14].coord[0] = 4.05; data[14].coord[1] = 1.44; 
-    data[15].coord[0] = 21.01; data[15].coord[1] = 18.90; 
-    data[16].coord[0] = 9.13; data[16].coord[1] = 24.44; 
-    data[17].coord[0] = 4.55; data[17].coord[1] = 2.00; 
-    data[18].coord[0] = 16.82; data[18].coord[1] = 4.56; 
-    data[19].coord[0] = 17.02; data[19].coord[1] = 19.04; 
-    data[20].coord[0] = 12.57; data[20].coord[1] = 1.14; 
-    data[21].coord[0] = 8.09; data[21].coord[1] = 8.10; 
-    data[22].coord[0] = 14.58; data[22].coord[1] = 2.16;
-    data[23].coord[0] = 16.54; data[23].coord[1] = 11.53; 
-    data[24].coord[0] = 10.66; data[24].coord[1] = 3.59; 
-    data[25].coord[0] = 6.24; data[25].coord[1] = 13.30; 
-    data[26].coord[0] = 4.21; data[26].coord[1] = 3.18; 
-    data[27].coord[0] = 9.97; data[27].coord[1] = 9.94; 
-    data[28].coord[0] = 0.31; data[28].coord[1] = 5.09; 
-    data[29].coord[0] = 2.53; data[29].coord[1] = 14.64; 
-    data[30].coord[0] = 20.62; data[30].coord[1] = 20.32; 
-    data[31].coord[0] = 12.36; data[31].coord[1] = 18.79;
-    data[32].coord[0] = 24.22; data[32].coord[1] = 2.73; 
-    */
     kdnode *kdtree;
 
     //#if defined(DEBUG)
@@ -94,7 +59,16 @@ int main(int argc, char **argv){
     //#endif
 
     tstart = CPU_TIME;
-    kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+    #pragma omp parallel shared(data, ndim, kdtree, n) //Just to remember which are shared
+    {
+        #pragma omp single nowait // No syncro barrier at the end (!= single). Or, use master!
+        {
+            PRINTF("Threa crating the task is %d\n",omp_get_thread_num());
+
+            kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+            
+        }
+    }
     tend = CPU_TIME;
 
     double time = tend - tstart;

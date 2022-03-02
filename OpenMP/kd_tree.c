@@ -43,22 +43,22 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         short int myaxis = choose_splitting_dimension( points, ndim, axis, finalIndex, startIndex); //the splitting dimension
 
         if( N == 1 ) {// return a leaf with the point *points;
-            PRINTF("Array has size %d and is composed by:\n", N);
-            PRINTF("(%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]);
+            // PRINTF("Array has size %d and is composed by:\n", N);
+            // PRINTF("(%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1]);
 
             new_node->left = NULL;
             new_node->right = NULL;
             new_node->axis = myaxis;
             new_node->split.coord[0] = points[startIndex].coord[0];
             new_node->split.coord[1] = points[startIndex].coord[1];
-            PRINTF("N=1: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
+            // PRINTF("N=1: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
             return new_node;
         }
 
         if( N == 2 ) {// return a node prior to a leaf with the point *points;
-            PRINTF("Array has size %d and is composed by:\n", N);
-            PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1], 
-            points[finalIndex].coord[0], points[finalIndex].coord[1]);
+            // PRINTF("Array has size %d and is composed by:\n", N);
+            // PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1], 
+            // points[finalIndex].coord[0], points[finalIndex].coord[1]);
 
             if(points[startIndex].coord[myaxis] > points[finalIndex].coord[myaxis])
                 swap_kpoint(&points[startIndex], &points[finalIndex]);
@@ -71,7 +71,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
             new_node->left = NULL;
             new_node->right = build_kdtree( points, ndim, myaxis, finalIndex, finalIndex);
 
-            PRINTF("N=2: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
+            // PRINTF("N=2: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
             return new_node;
         }
         
@@ -91,24 +91,24 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         int N_left = j - startIndex;
         int N_right= finalIndex - j;
 
-        #if defined(DEBUG)
-        PRINTF("Array has size %d and is composed by:\n", N);
-        for(int j = startIndex; j < finalIndex +1 ; j++) {
-            PRINTF("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
-        }
-        PRINTF("\n");
-        #endif
+        // #if defined(DEBUG)
+        // PRINTF("Array has size %d and is composed by:\n", N);
+        // for(int j = startIndex; j < finalIndex +1 ; j++) {
+        //     PRINTF("(%.2f,%.2f)\t", points[j].coord[0], points[j].coord[1]);
+        // }
+        // PRINTF("\n");
+        // #endif
 
         new_node->axis = myaxis; //save the splitting dimension ion the new node
         new_node->split = *mypoint; // here we save the kpoint of the splitting point on the new node
 
         if(N_left > 0){
-            PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-            PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
+            // PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+            // PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
 
             #pragma omp task shared(ndim, points) //No need for firstprivate(myaxis, startIndex, finalIndex): they are firstprivate!
             {
-
+                    
                 PRINTF("Task runned by thread %d\n",omp_get_thread_num()); // Print the thread executing (not creating) the task
 
                 new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
@@ -116,8 +116,8 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         }
 
         if(N_right > 0){
-            PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
-            PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
+            // PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
+            // PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
 
             #pragma omp task shared(ndim, points) // Same as above
             {
@@ -127,13 +127,13 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
                 new_node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
             }
         }
-        if(new_node->right != NULL || new_node->left != NULL){
-            PRINTF("N>=0: (%.2f, %.2f) axis %d, R:(%.2f, %.2f), L:(%.2f, %.2f)\n", new_node->split.coord[0], new_node->split.coord[1],
-            new_node->axis, new_node->right->split.coord[0], new_node->right->split.coord[1],
-            new_node->left->split.coord[0], new_node->left->split.coord[1]);
-        }else{
-            PRINTF("N>=0: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1],new_node->axis);
-        }
+        // if(new_node->right != NULL || new_node->left != NULL){
+        //     PRINTF("N>=0: (%.2f, %.2f) axis %d, R:(%.2f, %.2f), L:(%.2f, %.2f)\n", new_node->split.coord[0], new_node->split.coord[1],
+        //     new_node->axis, new_node->right->split.coord[0], new_node->right->split.coord[1],
+        //     new_node->left->split.coord[0], new_node->left->split.coord[1]);
+        // }else{
+        //     PRINTF("N>=0: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1],new_node->axis);
+        // }
 
         return new_node;
     }
@@ -156,19 +156,19 @@ kpoint *choose_splitting_point( kpoint *points, short int axis, int N, int start
     kpoint *midpoint = (kpoint*)malloc(sizeof(kpoint));
     if(N <= 30){//
         k = startIndex + N/2;
-        #if defined(DEBUG)
-            PRINTF("PRIMA\n");
-            for (int i=startIndex; i<=finalIndex; i++){
-                PRINTF("points[%d]: (%.2f, %.2f)\n", i, (points + i)->coord[0], (points + i)->coord[1]);
-            }
-        #endif
+        // #if defined(DEBUG)
+        //     PRINTF("PRIMA\n");
+        //     for (int i=startIndex; i<=finalIndex; i++){
+        //         PRINTF("points[%d]: (%.2f, %.2f)\n", i, (points + i)->coord[0], (points + i)->coord[1]);
+        //     }
+        // #endif
         hybrid_quick_sort(points, startIndex, finalIndex, axis);
-        #if defined(DEBUG)
-            PRINTF("DOPO\n");
-            for (int i=startIndex; i<=finalIndex; i++){
-                PRINTF("points[%d]: (%.2f, %.2f)\n", i, (points + i)->coord[0], (points + i)->coord[1]);
-            }
-        #endif
+        // #if defined(DEBUG)
+        //     PRINTF("DOPO\n");
+        //     for (int i=startIndex; i<=finalIndex; i++){
+        //         PRINTF("points[%d]: (%.2f, %.2f)\n", i, (points + i)->coord[0], (points + i)->coord[1]);
+        //     }
+        // #endif
         midpoint= (points + k);
     }else{
         k = startIndex + N/2;
@@ -198,7 +198,7 @@ int three_way_partition(kpoint *arr, double midvalue, short int axis, int startI
             ++j;
         }
     }
-    PRINTF("j %d, k %d, i %d\n",j,k,i);
+    // PRINTF("j %d, k %d, i %d\n",j,k,i);
     return j-1;
 }
 
@@ -206,24 +206,22 @@ int three_way_partition(kpoint *arr, double midvalue, short int axis, int startI
 double find_median(kpoint *arr, int k, short int axis, int startIndex, int finalIndex) {
 
     double pivot = arr[startIndex].coord[axis];
-    #if defined(DEBUG)
-    int N = finalIndex-startIndex+1;
-
-    
-    PRINTF("PRIMA N %d\n", N);
-    for (int i=startIndex; i<=finalIndex; i++){
-        PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
-    }
-    #endif
+    // #if defined(DEBUG)
+    // int N = finalIndex-startIndex+1;
+    // PRINTF("PRIMA N %d\n", N);
+    // for (int i=startIndex; i<=finalIndex; i++){
+    //     PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
+    // }
+    // #endif
 
     int pos = three_way_partition(arr, pivot, axis, startIndex, finalIndex);
 
-    #if defined(DEBUG)
-    PRINTF("DOPO N %d\n", N);
-    for (int i=startIndex; i<=finalIndex; i++){
-        PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
-    }
-    #endif
+    // #if defined(DEBUG)
+    // PRINTF("DOPO N %d\n", N);
+    // for (int i=startIndex; i<=finalIndex; i++){
+    //     PRINTF("arr[%d]: (%.2f, %.2f)\n", i, (arr + i)->coord[0], (arr + i)->coord[1]);
+    // }
+    // #endif
 
     if (pos == k)
         return pivot;
@@ -274,12 +272,12 @@ short int choose_splitting_dimension( kpoint *points, int ndim, short int axis, 
         // otherwise keep previous dimension
         if(axis == -1){
             myaxis = 0;
-            PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
+            // PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
             return myaxis;
         }
         myaxis = axis;
     }
-    PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
+    // PRINTF("Axis choice: prima %d, poi %d\n", axis, myaxis);
     return myaxis;
 }
 

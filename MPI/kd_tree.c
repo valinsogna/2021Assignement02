@@ -358,8 +358,7 @@ int partition(kpoint *arr, int low, int high, short int axis)
   return j;
   }
  
-// Function to call the partition function
-// and perform ascending quick sort on the array
+// Function to call the partition function and perform ascending quick sort on the array
 void quick_sort(kpoint *arr, int low,int high, short int axis)
 {
   if (low < high)

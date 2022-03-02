@@ -1,8 +1,8 @@
 #!/bin/sh
 
-#PBS -q dssc_gpu
+#PBS -q dssc
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=1:00:00
+#PBS -l walltime=0:15:00
 
 
 cd $PBS_O_WORKDIR
@@ -22,7 +22,7 @@ OUT='/u/dssc/valinsogna/2021Assignement02/OpenMP/results_strong'
 #'/fast/dssc/valinsogna/2021Assignement01/OpenMP/results_strong'
 
 for i in 1 2 4 8 16 24
-#for i in {1..24};
+#for i in {1..24}
 do
     export OMP_NUM_THREADS=${i}
     ./main.x >> ${OUT}/stdout_${i}.txt

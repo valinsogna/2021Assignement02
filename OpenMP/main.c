@@ -44,6 +44,7 @@ int main(int argc, char **argv){
     struct timespec ts;
     int ndim = NDIM;
     double tend, tstart;
+    double time;
     FILE *fptr;
 
     kpoint *data = genRandomKPoints(n);
@@ -63,7 +64,7 @@ int main(int argc, char **argv){
     {
         #pragma omp single nowait // No syncro barrier at the end (!= single). Or, use master!
         {
-            PRINTF("Threa crating the task is %d\n",omp_get_thread_num());
+            PRINTF("The crating the task is %d\n",omp_get_thread_num());
 
             kdtree = build_kdtree(data, ndim, -1, 0, n-1);
             
@@ -71,14 +72,16 @@ int main(int argc, char **argv){
     }
     tend = CPU_TIME;
 
-    double time = tend - tstart;
+    time = tend - tstart;
     
+    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
+
     if(PRINT_TREE){
         unsigned int depth = 1;
+        printf("The nodes are the following:\n");
         printTree(kdtree, depth);
     }
-        
-    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
+    printf("\n");
 
 
     fptr = fopen("./time.dat","a");

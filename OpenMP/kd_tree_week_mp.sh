@@ -1,8 +1,8 @@
 #!/bin/sh
 
-#PBS -q dssc_gpu
+#PBS -q dssc
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=1:00:00
+#PBS -l walltime=0:15:00
 
 
 cd $PBS_O_WORKDIR
@@ -21,9 +21,10 @@ make all
 OUT='/u/dssc/valinsogna/2021Assignement02/OpenMP/results_week'
 #'/fast/dssc/valinsogna/2021Assignement01/OpenMP/results_week'
 
-start=10000000
+start=10000000 #10^7
 
-for i in {17..24};
+for i in 1 2 4 8 16
+#for i in {1..24}
 do
     export OMP_NUM_THREADS=${i}
     a=$(( i * start ))

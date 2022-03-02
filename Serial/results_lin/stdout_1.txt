@@ -1,1 +1,0 @@
-The serial kd-tree building tooks 7.001e-06 of wall-clock time

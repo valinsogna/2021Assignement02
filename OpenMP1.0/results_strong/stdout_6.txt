@@ -1,1 +1,0 @@
-The parallel kd-tree building tooks 1.590e+02 of wall-clock time

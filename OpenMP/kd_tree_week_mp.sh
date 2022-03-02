@@ -2,7 +2,7 @@
 
 #PBS -q dssc
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=0:15:00
+#PBS -l walltime=0:30:00
 
 
 cd $PBS_O_WORKDIR

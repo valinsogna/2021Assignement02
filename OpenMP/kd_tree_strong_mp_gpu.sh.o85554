@@ -1,0 +1,4 @@
+rm -f *.x
+rm -f *.o
+clear
+gcc -Wall -Wextra -std=c99 -O3 -fopenmp main.c kd_tree.c -o main.x 

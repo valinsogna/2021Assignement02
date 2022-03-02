@@ -7,7 +7,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "kd_tree.h"
-//gcc main.c kd_tree.c -o main.x -Wall -Wextra -std=c99
+
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
 #else
@@ -16,7 +16,8 @@
 #define NDIM 2
 #define MAX 25
 #define NDATAPOINT 10 //100000000 //10^8
-#define PRINT_TREE 0
+#define PRINT_TREE 1
+#define MAX_DEPTH 4
 /*
 CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 
@@ -29,7 +30,7 @@ while excluding time that the process was waiting for a CPU resource on a 'run q
 		     (double)myts.tv_nsec * 1e-9)
 
 kpoint *genRandomKPoints(unsigned int);
-void printTree(kdnode *data);
+void printTree(kdnode*, unsigned int);
 
 int main(int argc, char **argv){
 
@@ -95,10 +96,15 @@ int main(int argc, char **argv){
     tstart = CPU_TIME;
     kdtree = build_kdtree(data, ndim, -1, 0, n-1);
     tend = CPU_TIME;
-    //Uncomment to print tree when DEBUG but ATT: it is not adviced when n is large!
-    if(PRINT_TREE)
-        printTree(kdtree);
-    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", tend - tstart );
+
+    double time = tend - tstart;
+    
+    if(PRINT_TREE){
+        unsigned int depth = 1;
+        printTree(kdtree, depth);
+    }
+        
+    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
 
 
     fptr = fopen("./time.dat","a");
@@ -108,7 +114,7 @@ int main(int argc, char **argv){
 	    );
         exit(EXIT_FAILURE);         
     }
-    fprintf(fptr,"%9.3e\n",tend - tstart);
+    fprintf(fptr,"%9.3e\n",time);
     fclose(fptr);
 
     free(kdtree);
@@ -143,7 +149,11 @@ kpoint *genRandomKPoints(unsigned int npoints){
     return points;
 }
 
-void printTree(kdnode *data) {
+void printTree(kdnode *data, unsigned int depth) {
+
+    if(depth > MAX_DEPTH)
+        return;
+
     if ((data->right == NULL) && (data->left == NULL)) {
         kpoint point = data->split;
         printf("(%.2f,%.2f) -> LEAF \n", point.coord[0], point.coord[1]);
@@ -156,7 +166,8 @@ void printTree(kdnode *data) {
         kpoint l_point = left->split;
         printf("(%.2f,%.2f) -> L: (%.2f,%.2f) [axis=%d] \n", point.coord[0], point.coord[1], l_point.coord[0], l_point.coord[1], data->axis);
 
-        printTree(left);
+        ++depth;
+        printTree(left, depth);
         return;
     }
 
@@ -166,7 +177,8 @@ void printTree(kdnode *data) {
         kpoint r_point = right->split;
         printf("(%.2f,%.2f) -> R: (%.2f,%.2f) [axis=%d]\n", point.coord[0], point.coord[1], r_point.coord[0], r_point.coord[1], data->axis);
 
-        printTree(right);
+        ++depth;
+        printTree(right, depth);
         return;
     }
 
@@ -180,7 +192,8 @@ void printTree(kdnode *data) {
     printf("(%.2f,%.2f) -> R: (%.2f,%.2f) [axis=%d] \n", point.coord[0], point.coord[1], r_point.coord[0], r_point.coord[1], data->axis);
     printf("(%.2f,%.2f) -> L: (%.2f,%.2f) [axis=%d] \n", point.coord[0], point.coord[1], l_point.coord[0], l_point.coord[1], data->axis);
 
-    printTree(left);
-    printTree(right);
+    ++depth;
+    printTree(left, depth);
+    printTree(right, depth);
     return;
 }

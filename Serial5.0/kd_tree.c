@@ -62,7 +62,6 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
             if(points[startIndex].coord[myaxis] > points[finalIndex].coord[myaxis])
                 swap_kpoint(&points[startIndex], &points[finalIndex]);
             
-            
             // return a node with a leaf on the right;
             new_node->axis = myaxis;
             new_node->split.coord[0] = points[startIndex].coord[0];
@@ -203,7 +202,7 @@ double find_median(kpoint *arr, int k, short int axis, int startIndex, int final
     }
     #endif
 
-    int pos = three_way_partition(arr, pivot, axis, startIndex, finalIndex);
+    int pivot_index = three_way_partition(arr, pivot, axis, startIndex, finalIndex);
 
     #if defined(DEBUG)
     PRINTF("DOPO N %d\n", N);
@@ -212,13 +211,13 @@ double find_median(kpoint *arr, int k, short int axis, int startIndex, int final
     }
     #endif
 
-    if (pos == k)
+    if (pivot_index == k)
         return pivot;
-    if (pos > k){
-        return find_median(arr, k, axis, startIndex, pos - 1);
+    if (pivot_index > k){
+        return find_median(arr, k, axis, startIndex, pivot_index - 1);
     }
-    if (pos < k){
-        return find_median(arr, k, axis, pos + 1, finalIndex);
+    if (pivot_index < k){
+        return find_median(arr, k, axis, pivot_index + 1, finalIndex);
     }   
     return -1;
 }

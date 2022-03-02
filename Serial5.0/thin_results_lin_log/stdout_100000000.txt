@@ -1,9 +1,0 @@
-The parallel kd-tree building tooks 5.111e+01 of wall-clock time
-The parallel kd-tree building tooks 5.104e+01 of wall-clock time
-The parallel kd-tree building tooks 5.033e+01 of wall-clock time
-The parallel kd-tree building tooks 5.059e+01 of wall-clock time
-The parallel kd-tree building tooks 5.160e+01 of wall-clock time
-The parallel kd-tree building tooks 5.058e+01 of wall-clock time
-The parallel kd-tree building tooks 5.193e+01 of wall-clock time
-The parallel kd-tree building tooks 5.131e+01 of wall-clock time
-The parallel kd-tree building tooks 5.041e+01 of wall-clock time

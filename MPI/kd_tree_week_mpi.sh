@@ -1,8 +1,8 @@
 #!/bin/sh
 
-#PBS -q dssc_gpu
+#PBS -q dssc
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=1:10:00
+#PBS -l walltime=0:30:00
 
 
 cd $PBS_O_WORKDIR
@@ -17,12 +17,13 @@ OUT='/u/dssc/valinsogna/2021Assignement02/MPI/results_week'
 make clean
 make all
 
-start=10000000
+start=10000000 #10^7
 
-for i in {1..24};
+for i in 1 2 4 8 16 24
+#for i in {1..24};
 do
     a=$(( i * start ))
-    mpirun -np ${i} --map-by socket --mca btl ^openib ./main_mpi.x ${a} >> ${OUT}/stdout_${i}.txt
+    mpirun -np ${i} --map-by socket --mca btl ^openib ./main.x ${a} >> ${OUT}/stdout_${i}.txt
 done
 cat $PBS_NODEFILE >> ${OUT}/nodes_used.out
 

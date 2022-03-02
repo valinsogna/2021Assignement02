@@ -23,7 +23,7 @@ OUT='/u/dssc/valinsogna/2021Assignement02/OpenMP/results_week'
 
 start=10000000 #10^7
 
-for i in 1 2 4 8 16
+for i in 1 2 4 8 16 24
 #for i in {1..24}
 do
     export OMP_NUM_THREADS=${i}

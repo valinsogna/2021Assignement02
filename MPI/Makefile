@@ -1,4 +1,4 @@
-CXXFLAGS = -Wall -Wextra -std=c99
+CXXFLAGS = -Wall -Wextra -std=c99 -O3
 CC = mpicc
 
 all: executable
@@ -6,21 +6,8 @@ all: executable
 debug: CXXFLAGS += -DDEBUG -g
 debug: executable
 
-executable: main_mp.o kd_tree_mp.o medOfMed_mp.o
-	$(CC) main_mp.o kd_tree_mp.o medOfMed_mp.o -o main_mp.x
-
-main_mp.o: main_mp.c kd_tree_mp.h
-	$(CC) main_mp.c $(CXXFLAGS)
-
-kd_tree_mp.o: kd_tree_mp.c medOfMed_mp.h kd_tree_mp.h
-	$(CC) kd_tree_mp.c $(CXXFLAGS)
-
-medOfMed_mp.o: medOfMed_mp.c medOfMed_mp.h kd_tree_mp.h
-	$(CC) medOfMed_mp.c $(CXXFLAGS)
-	
-# mp: 
-# 	$(CC) -fopenmp medOfMed_mp.c main_mp.c kd_tree_mp.c -o main_mp.x
-
+executable:
+	$(CC) $(CXXFLAGS) main.c kd_tree.c -o main.x 
 clean:
 	rm -f *.x
 	rm -f *.o

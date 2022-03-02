@@ -1,6 +1,0 @@
-TERM environment variable not set.
-make: *** [clean] Error 1
-kd_tree.c: In function ‘partition’:
-kd_tree.c:234:7: warning: variable ‘i’ set but not used [-Wunused-but-set-variable]
-  234 |   int i ,j;
-      |       ^

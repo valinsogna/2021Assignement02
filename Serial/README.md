@@ -8,7 +8,10 @@ To debug and compile the cod run:
 `make debug`
 
 ## Running 
-To run the code with $10^8$ homogeneously random generated data points around [0,25], simply run:
+This code generates a kd-tree that can be accessed by a pointer with linked lists of kd-nodes.
+The code generates by default `NDATAPOINTS=10^8` data points for the kd-tree which are homogeneously random distributed among [0,`MAX`], with default `MAX=25`.
+
+To run the code  with default value of `NDATAPOINTS=10^8`, simply run:
 
 `./main.x`
 

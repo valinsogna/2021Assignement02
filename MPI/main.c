@@ -35,16 +35,22 @@ void printTree(kdnode*, unsigned int);
 
 int main(int argc, char **argv){
 
+    //Start MPI
+    MPI_Init( &argc, &argv );
+    MPI_Comm_rank( MPI_COMM_WORLD,&my_rank );
+    MPI_Comm_size( MPI_COMM_WORLD,&size );  
+
     unsigned int n; 
     if ( argc > 1 )
         n = atoi(*(argv + 1));
     else
         n = NDATAPOINT;
 
-    struct timespec ts;
     int ndim = NDIM;
+    int my_rank, size;
     double tend, tstart;
     double time;
+    struct timespec ts;
     FILE *fptr;
 
     kpoint *data = genRandomKPoints(n);
@@ -63,30 +69,34 @@ int main(int argc, char **argv){
     kdtree = build_kdtree(data, ndim, -1, 0, n-1);
     tend = CPU_TIME;
 
-    time = tend - tstart;
+    if (my_rank == 0) {
+        time = tend - tstart;
+        printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
+
+        if(PRINT_TREE){
+            unsigned int depth = 1;
+            printf("The nodes are the following:\n");
+            printTree(kdtree, depth);
+        }
+        printf("\n");
+
+
+        fptr = fopen("./time.dat","a");
+        if(fptr == NULL){
+            fprintf(stderr, RED "[ERROR]"
+                NC  "Could not open file ./time.out\n"
+	            );
+            exit(EXIT_FAILURE);         
+        }
+        fprintf(fptr,"%9.3e\n",time);
+        fclose(fptr);
+
+        free(kdtree);
+        free(data);
+    }
     
-    printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
-
-    if(PRINT_TREE){
-        unsigned int depth = 1;
-        printf("The nodes are the following:\n");
-        printTree(kdtree, depth);
-    }
-    printf("\n");
-
-
-    fptr = fopen("./time.dat","a");
-    if(fptr == NULL){
-        fprintf(stderr, RED "[ERROR]"
-            NC  "Could not open file ./time.out\n"
-	    );
-        exit(EXIT_FAILURE);         
-    }
-    fprintf(fptr,"%9.3e\n",time);
-    fclose(fptr);
-
-    free(kdtree);
-    free(data);
+    // done with MPI 
+    MPI_Finalize();
 
     return 0;
 }

@@ -1,7 +1,7 @@
 # 2021Assignement02
 
 ## Introduction
-In the following folders you have the C-implementations (in serial and parallel ways) of a kd-tree generation program in two dimensions `NDIM=2` with default `NDATAPOINTS=10^8` homogeneously distributed among [0,`MAX`], with default `MAX=25`.
+In the following folders you have the **C-implementations** (in serial and parallel ways) of a **kd-tree generation program in two dimensions** `NDIM=2` with default `NDATAPOINTS=10^8` **double** variables **homogeneously distributed** among [0,`MAX`], with default `MAX=25`.
 
 The generated kd-tree that can be accessed by a pointer with a linked lists of kd-nodes: the first address being the one that corrispondes to the first splitting kd-node at depth 1 of the kd-tree. 
 

@@ -2,7 +2,7 @@
 
 #PBS -q dssc
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=0:30:00
+#PBS -l walltime=0:50:00
 
 
 cd $PBS_O_WORKDIR
@@ -23,12 +23,15 @@ OUT='/u/dssc/valinsogna/2021Assignement02/OpenMP/results_week'
 
 start=10000000 #10^7
 
+for j in {1..10}
+do
 for i in 1 2 4 8 16 24
 #for i in {1..24}
 do
     export OMP_NUM_THREADS=${i}
     a=$(( i * start ))
     ./main.x ${a} >> ${OUT}/stdout_${i}.txt
+done
 done
 cat $PBS_NODEFILE >> ${OUT}/nodes_used.out
 

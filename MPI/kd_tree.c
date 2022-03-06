@@ -20,7 +20,7 @@ double find_median(kpoint*, int, short int, int, int);
 int three_way_partition(kpoint*, double , short int, int, int );
 
 // Core function for building the kdtree
-kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex ){
+kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int size, int rank ){
     /*
     * points is a pointer to the relevant section of the data set;
     * N is the number of points to be considered, from points to points+N * ndim is the number of dimensions of the data points
@@ -37,6 +37,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
             fprintf(stderr, RED "[ERROR]"
                 NC  "I'm sorry, there is not enough memory to host %lu bytes\n",
 	         sizeof(kdnode) );
+            MPI_Finalize() ;
             exit(EXIT_FAILURE);
         }
 
@@ -129,6 +130,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
     // If k is more than the number of elements in the array
     fprintf(stderr, RED "[ERROR]"
             NC  ": N turned out to be negative! \n");
+    MPI_Finalize() ;
     exit(EXIT_FAILURE);
 
 

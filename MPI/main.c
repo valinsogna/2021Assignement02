@@ -52,10 +52,13 @@ int main(int argc, char **argv){
     double time;
     struct timespec ts;
     FILE *fptr;
+    kpoint *data = NULL;
+    kdnode *kdtree = NULL;
 
-    kpoint *data = genRandomKPoints(n);
-
-    kdnode *kdtree;
+    if(my_rank == 0) {
+        data = genRandomKPoints(n);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     //#if defined(DEBUG)
     //PRINTF("Array randomly generated:\t");
@@ -65,11 +68,17 @@ int main(int argc, char **argv){
     //PRINTF("\n");
     //#endif
 
-    tstart = CPU_TIME;
-    kdtree = build_kdtree(data, ndim, -1, 0, n-1);
-    tend = CPU_TIME;
+    if (my_rank == 0)
+        tstart = CPU_TIME;
+
+    kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (my_rank == 0)
+        tend = CPU_TIME;
 
     if (my_rank == 0) {
+
         time = tend - tstart;
         printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
 
@@ -105,15 +114,16 @@ kpoint *genRandomKPoints(unsigned int npoints){
 
     srand48(time(NULL));
 
-    kpoint *points;
+    kpoint *points = NULL;
     kpoint temp;
 
     // allocate memory
     if ( (points = (kpoint*)malloc( npoints * sizeof(kpoint) )) == NULL )
        {
-         printf("I'm sorry, there is not enough memory to host %lu bytes\n",
+        printf("I'm sorry, there is not enough memory to host %lu bytes\n",
     	     npoints * sizeof( kpoint) );
-         return points;
+        MPI_Finalize();
+        exit(EXIT_FAILURE);
        }
     
 

@@ -68,10 +68,10 @@ int main(int argc, char **argv){
     //PRINTF("\n");
     //#endif
 
-    if (my_rank == 0)
+    if (my_rank == 0){
         tstart = CPU_TIME;
-
-    kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank);
+        kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank);
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (my_rank == 0)

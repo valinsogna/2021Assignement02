@@ -20,14 +20,19 @@ double find_median(kpoint*, int, short int, int, int);
 int three_way_partition(kpoint*, double , short int, int, int );
 
 // Core function for building the kdtree
-kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int size, int rank ){
+kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth ){
     /*
     * points is a pointer to the relevant section of the data set;
     * N is the number of points to be considered, from points to points+N * ndim is the number of dimensions of the data points
     * axis is the dimension used previsously as the splitting one
+    * startIndex and finalIndex are the indeces extremities of the ptr points involved in the current building of the kdnode.
+    * comm is the communicator among the processes
+    * np_size is the number of processes involved
+    * rank is the process id involved in building the current kd-node
+    * depth is the kd-tree depth level starting from 0.
     */
 
-    int N = finalIndex-startIndex+1; // Number of elements in arr[startIndex..startIndex]
+    int N = finalIndex-startIndex+1; // Number of elements in points[startIndex..finalIndex]
     
     if( N >= 0){
         // Allocate the memory for a new node with a classical linked-list:

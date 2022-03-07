@@ -18,6 +18,6 @@ struct kdnode{
    kdnode *left, *right; // the left and right sub-trees
 };
 
-kdnode *build_kdtree( kpoint *points, int ndim, short int axis , int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth);
+kdnode *build_kdtree( kpoint *points, int ndim, short int axis , int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth, int max_depth, int surplus_np);
 
 #endif

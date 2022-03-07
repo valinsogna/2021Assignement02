@@ -14,7 +14,7 @@
 #define ROUND_ROBIN_AXIS 1
 
 // Core function for building the kdtree
-kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth ){
+kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth, int max_depth, int surplus_np ){
     /*
     * points is a pointer to the relevant section of the data set;
     * N is the number of points to be considered, from points to points+N * ndim is the number of dimensions of the data points

@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "kd_tree.h"
+#include "utils.h"
 #include <mpi.h>
 
 #if defined(DEBUG)
@@ -37,8 +38,6 @@ int main(int argc, char **argv){
 
     //Start MPI
     MPI_Init( &argc, &argv );
-    MPI_Comm_rank( MPI_COMM_WORLD,&my_rank );
-    MPI_Comm_size( MPI_COMM_WORLD,&size );  
 
     unsigned int n; 
     if ( argc > 1 )
@@ -47,13 +46,18 @@ int main(int argc, char **argv){
         n = NDATAPOINT;
 
     int ndim = NDIM;
-    int my_rank, size;
+    int my_rank, size, max_depth, surplus_np;
+    MPI_Comm_rank( MPI_COMM_WORLD,&my_rank );
+    MPI_Comm_size( MPI_COMM_WORLD,&size );  
     double tend, tstart;
     double time;
     struct timespec ts;
     FILE *fptr;
     kpoint *data = NULL;
     kdnode *kdtree = NULL;
+
+    max_depth = compute_max_depth(size);
+    surplus_np = compute_n_surplus_processes(size, max_depth);
 
     if(my_rank == 0) {
         data = genRandomKPoints(n);
@@ -70,7 +74,7 @@ int main(int argc, char **argv){
 
     if (my_rank == 0){
         tstart = CPU_TIME;
-        kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank);
+        kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank, 0, max_depth, surplus_np);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

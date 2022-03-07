@@ -19,9 +19,5 @@ struct kdnode{
 };
 
 kdnode *build_kdtree( kpoint *points, int ndim, short int axis , int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth);
-void hybrid_quick_sort(kpoint *arr, int low, int high, short int axis);
-void quick_sort(kpoint *arr, int low,int high, short int axis);
-int partition(kpoint *arr, int low, int high, short int axis);
-void insertion_sort(kpoint *arr, int low, int n, short int axis);
 
 #endif

@@ -25,7 +25,7 @@ CLOCK_PROCESS_CPUTIME_ID:
 amount of time a process has been running on a CPU, 
 while excluding time that the process was waiting for a CPU resource on a 'run queue'.
 */
-#define CPU_TIME (clock_gettime( CLOCK_REALTIME, &ts ), (double)ts.tv_sec + \
+#define WALL_CLOCK_TIME (clock_gettime( CLOCK_REALTIME, &ts ), (double)ts.tv_sec + \
 		  (double)ts.tv_nsec * 1e-9)
 
 #define CPU_TIME_th (clock_gettime( CLOCK_THREAD_CPUTIME_ID, &myts ), (double)myts.tv_sec +	\
@@ -35,30 +35,35 @@ kpoint *genRandomKPoints(unsigned int);
 void printTree(kdnode*, unsigned int);
 
 int main(int argc, char **argv){
+    
+    unsigned int n; 
+    int ndim = NDIM;
+    int my_rank, size, max_depth, surplus_np;
+    double tend, tstart;
+    double time;
+    FILE *fptr;
+    kpoint *data = NULL;
+    kdnode *kdtree = NULL;
 
     //Start MPI
     MPI_Init( &argc, &argv );
+    MPI_Comm_rank( MPI_COMM_WORLD,&my_rank );
+    MPI_Comm_size( MPI_COMM_WORLD,&size ); 
 
-    unsigned int n; 
     if ( argc > 1 )
         n = atoi(*(argv + 1));
     else
         n = NDATAPOINT;
 
-    int ndim = NDIM;
-    int my_rank, size, max_depth, surplus_np;
-    MPI_Comm_rank( MPI_COMM_WORLD,&my_rank );
-    MPI_Comm_size( MPI_COMM_WORLD,&size );  
-    double tend, tstart;
-    double time;
-    struct timespec ts;
-    FILE *fptr;
-    kpoint *data = NULL;
-    kdnode *kdtree = NULL;
-
+    /*
+    Get the maximum depth of the kd-tree available for ensuring that at least
+    one process is ready to take on the right branch, and get the number of surplus processes that couldn't fit 
+    into the list of processes assigned with a branch on a specific depth of the tree smaller than log2(size).
+    */
     max_depth = get_max_parallel_depth(size);
     surplus_np = get_remaining_processes(size, max_depth);
 
+    //Process 0 generates random kd-points, whilst all processes wait for it.
     if(my_rank == 0) {
         data = genRandomKPoints(n);
     }
@@ -72,19 +77,18 @@ int main(int argc, char **argv){
     //PRINTF("\n");
     //#endif
 
+    //Process 0 starts bulding the kd-tree and get the time, whilst the others start to wait for data
     if (my_rank == 0){
-        tstart = CPU_TIME;
+        tstart = WALL_CLOCK_TIME;
         kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank, 0, max_depth, surplus_np);
     } else {
-        kd_tree = start_build(); // the other processes starts to wait for data
+        kd_tree = prepare_build();
     }
 
+    //Wait for all processes to complete to get the wall-clock time
     MPI_Barrier(MPI_COMM_WORLD);
-    if (my_rank == 0)
-        tend = CPU_TIME;
-
     if (my_rank == 0) {
-
+        tend = WALL_CLOCK_TIME;
         time = tend - tstart;
         printf("The parallel kd-tree building tooks %9.3e of wall-clock time\n", time );
 
@@ -106,10 +110,9 @@ int main(int argc, char **argv){
         fprintf(fptr,"%9.3e\n",time);
         fclose(fptr);
 
-        free(kdtree);
         free(data);
     }
-    
+    free(kdtree);
     // done with MPI 
     MPI_Finalize();
 

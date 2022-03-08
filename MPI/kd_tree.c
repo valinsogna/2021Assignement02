@@ -13,8 +13,8 @@
 #endif
 #define ROUND_ROBIN_AXIS 1
 
-// Core function for building the kdtree on one core
-kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth, int max_depth, int surplus_np ){
+// Core function for building the kdtree on one process
+kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex){
     int N = finalIndex-startIndex+1; // Number of elements in points[startIndex..finalIndex]
     
     if( N >= 0){
@@ -138,10 +138,6 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
     int N = finalIndex-startIndex+1; // Number of elements in points[startIndex..finalIndex]
     int next_depth = depth + 1;
     int right_rank = get_right_process_rank(rank, max_depth, next_depth, surplus_np, np_size);
-
-    if (right_rank == -1) {
-        serial_build_kdtree(points, ndim, axis, startIndex, finalIndex, comm, np_size, rank, depth, max_depth, surplus_np);
-    }
     
     if( N >= 0){
         // Allocate the memory for a new node with a classical linked-list:
@@ -193,7 +189,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         // implement the choice for splitting point
         kpoint *mypoint = choose_splitting_point( points, myaxis, N, startIndex, finalIndex); //the splitting point
         
-        // We individuate the left- and right- points with a 2-ways partition.
+        // We individuate the left- and right- points with a 3-ways partition.
         // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
         int j= startIndex + N/2;
         // int notFound=1;
@@ -216,18 +212,30 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         new_node->axis = myaxis; //save the splitting dimension ion the new node
         new_node->split = *mypoint; // here we save the kpoint of the splitting point on the new node
 
-        if(N_left > 0){
+        if (right_rank == -1) {
+
+            #ifdef DEBUG
+            printf("Process [%d]: no available processes, going single core from now\n", rank);
+            #endif
+
+            if(N_left > 0)
+                new_node->left = serial_build_kdtree( points, ndim, myaxis, startIndex, j - 1);
+            if(N_right > 0)
+                new_node->right = serial_build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+        }else{
+            if(N_left > 0){
             // PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             // PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
 
-            new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
-        }
+                new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
+            }
 
-        if(N_right > 0){
+            if(N_right > 0){
             // PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             // PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
 
-            new_node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+                new_node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+            }
         }
         // if(new_node->right != NULL || new_node->left != NULL){
         //     PRINTF("N>=0: (%.2f, %.2f) axis %d, R:(%.2f, %.2f), L:(%.2f, %.2f)\n", new_node->split.coord[0], new_node->split.coord[1],

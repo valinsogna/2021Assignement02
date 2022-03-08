@@ -16,11 +16,11 @@
  *
  * This function determines indirectly also the number of "surplus" processes.
  *
- * @param n_processes Number of processes/threads available.
+ * @param np_size Number of processes/threads available.
  * @return int
  */
-int compute_max_depth(int n_processes) {
-  return log2((double)n_processes);
+int get_max_parallel_depth(int np_size) {
+  return log2((double)np_size);
 }
 
 /**
@@ -31,13 +31,13 @@ int compute_max_depth(int n_processes) {
  * branch. Only some splits have a surplus process, starting from the leftmost
  * split in the tree.
  *
- * @param n_processes Number of processes/threads available.
+ * @param np_size Number of processes/threads available.
  * @param max_depth Maximum depth which guarantees that there is at least one
  *                    idle process.
  * @return int
  */
-int compute_n_surplus_processes(int n_processes, int max_depth) {
-  return n_processes - (int)pow(2.0, (double)max_depth);
+int get_remaining_processes(int np_size, int max_depth) {
+  return np_size - (int)pow(2.0, (double)max_depth);
 }
 
 /**
@@ -70,15 +70,15 @@ int compute_n_surplus_processes(int n_processes, int max_depth) {
  * @param next_depth Depth of the next level of the tree (the one after the
  *                    split).
  * @param surplus_processes Number of surplus processes.
- * @param n_processes Number of processes/threads available.
+ * @param np_size Number of processes/threads available.
  * @return int
  */
-int compute_next_process_rank(int rank, int max_depth, int next_depth, int surplus_processes, int n_processes) {
+int get_right_process_rank(int rank, int max_depth, int next_depth, int surplus_processes, int np_size) {
   // this has two components: one for non-surplus processes, and one for surplus
   if (next_depth <= max_depth)
     return rank + pow(2.0, max_depth - next_depth);
   else if (next_depth > max_depth && rank < surplus_processes)
-    return n_processes - surplus_processes + rank;
+    return np_size - surplus_processes + rank;
   else
     return -1;
 }

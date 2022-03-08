@@ -56,8 +56,8 @@ int main(int argc, char **argv){
     kpoint *data = NULL;
     kdnode *kdtree = NULL;
 
-    max_depth = compute_max_depth(size);
-    surplus_np = compute_n_surplus_processes(size, max_depth);
+    max_depth = get_max_parallel_depth(size);
+    surplus_np = get_remaining_processes(size, max_depth);
 
     if(my_rank == 0) {
         data = genRandomKPoints(n);
@@ -75,6 +75,8 @@ int main(int argc, char **argv){
     if (my_rank == 0){
         tstart = CPU_TIME;
         kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank, 0, max_depth, surplus_np);
+    } else {
+        kd_tree = start_build(); // the other processes starts to wait for data
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

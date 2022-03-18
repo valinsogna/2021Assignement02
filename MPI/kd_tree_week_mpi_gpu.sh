@@ -1,25 +1,25 @@
 #!/bin/sh
 
-#PBS -q dssc
-#PBS -l nodes=1:ppn=24
-#PBS -l walltime=0:30:00
+#PBS -q dssc_gpu
+#PBS -l nodes=1:ppn=32
+#PBS -l walltime=0:40:00
 
 
 cd $PBS_O_WORKDIR
-rm -f kd_tree_week_mpi.sh.*
-mkdir -p results_week
+rm -f kd_tree_week_mpi_gpu.sh.*
+mkdir -p results_week_gpu
 
 module load openmpi-4.1.1+gnu-9.3.0
 
-OUT='/u/dssc/valinsogna/2021Assignement02/MPI/results_week'
-#'/fast/dssc/valinsogna/2021Assignement01/MPI/results_week'
+OUT='/u/dssc/valinsogna/2021Assignement02/MPI/results_week_gpu'
+#'/fast/dssc/valinsogna/2021Assignement01/MPI/results_week_gpu'
 
 make clean
 make all
 
 start=10000000 #10^7
 
-for i in 1 2 4 8 16 #24
+for i in 1 2 4 8 16 24 32
 #for i in {1..24};
 do
     a=$(( i * start ))

@@ -41,6 +41,7 @@ int main(int argc, char **argv){
     int my_rank, size, max_depth, surplus_np;
     double tend, tstart;
     double time;
+    struct timespec ts;
     FILE *fptr;
     kpoint *data = NULL;
     kdnode *kdtree = NULL;

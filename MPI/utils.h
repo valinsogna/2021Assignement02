@@ -3,9 +3,9 @@
 #define RED "\e[0;31m"
 #define NC "\e[0m"
 
-int compute_max_depth(int n_processes);
-int compute_n_surplus_processes(int n_processes, int max_depth);
-int compute_next_process_rank(int rank, int max_depth, int next_depth, int surplus_processes, int n_processes);
+int get_max_parallel_depth(int);
+int get_remaining_processes(int, int);
+int get_right_process_rank(int, int, int, int, int);
 short int choose_splitting_dimension(kpoint*, int, short int, int, int);
 double getExtent(kpoint*, int, int, int);
 kpoint *choose_splitting_point(kpoint *, short int, int, int, int);

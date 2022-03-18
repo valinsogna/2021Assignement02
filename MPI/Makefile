@@ -7,7 +7,7 @@ debug: CXXFLAGS += -DDEBUG -g
 debug: executable
 
 executable:
-	$(CC) $(CXXFLAGS) main.c kd_tree.c utils.c -o main.x 
+	$(CC) $(CXXFLAGS) main.c kd_tree.c utils.c -o main.x -lm
 clean:
 	rm -f *.x
 	rm -f *.o

@@ -5,13 +5,11 @@
 #include "utils.h"
 #include <mpi.h>
 
-#define EXTENT_DIFF_THRESHOLD 0.5
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
 #else
 #define PRINTF(...)
 #endif
-#define ROUND_ROBIN_AXIS 1
 
 // Core function for building the kdtree on one process
 kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex){
@@ -58,7 +56,7 @@ kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startI
             new_node->split.coord[0] = points[startIndex].coord[0];
             new_node->split.coord[1] = points[startIndex].coord[1];
             new_node->left = NULL;
-            new_node->right = build_kdtree( points, ndim, myaxis, finalIndex, finalIndex);
+            new_node->right = serial_build_kdtree( points, ndim, myaxis, finalIndex, finalIndex);
 
             // PRINTF("N=2: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
             return new_node;
@@ -94,14 +92,14 @@ kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startI
             // PRINTF("L: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             // PRINTF("L: Start %d | End %d\n",startIndex, j - 1);
 
-            new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
+            new_node->left = serial_build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
         }
 
         if(N_right > 0){
             // PRINTF("R: j %d | N %d | N_left %d| N_right %d\n",j, N, N_left, N_right);
             // PRINTF("R: Start %d | End %d\n",j + 1, j + N_right);
 
-            new_node->right = build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
+            new_node->right = serial_build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
         }
         // if(new_node->right != NULL || new_node->left != NULL){
         //     PRINTF("N>=0: (%.2f, %.2f) axis %d, R:(%.2f, %.2f), L:(%.2f, %.2f)\n", new_node->split.coord[0], new_node->split.coord[1],
@@ -219,9 +217,9 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
             // Sending right branch and the other paramteres to the right process
             if(N_right > 0){
 
-                int startIndex_R = j + 1;
+                // int startIndex_R = j + 1;
                 // int finalIndex_R = j + N_right;
-                kpoint * right_points = points + startIndex_R
+                kpoint * right_points = points + j + 1;
 
                 // # Send params for build_kdtree calling on right branch
                 int params[] = {N_right, ndim, myaxis, np_size, right_rank, next_depth, max_depth, surplus_np};
@@ -244,7 +242,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 }
 
 
-knode *prepare_build(MPI_Comm comm){
+kdnode *prepare_build(MPI_Comm comm){
 
     int params[8];
     MPI_Status status;
@@ -264,7 +262,7 @@ knode *prepare_build(MPI_Comm comm){
                status.MPI_ERROR);
 
     // Start building the sub-kdtree
-    knode * sub_kdtree = build_kdtree(points, params[1], params[2], 0, params[0]-1, comm, params[3], params[4], params[5], params[6], params[7]); 
+    kdnode * sub_kdtree = build_kdtree(points, params[1], params[2], 0, params[0]-1, comm, params[3], params[4], params[5], params[6], params[7]); 
     // if(PRINT_TREE){
     //         unsigned int depth = 1;
     //         printf("The nodes are the following:\n");

@@ -17,7 +17,7 @@ OUT='/u/dssc/valinsogna/2021Assignement02/MPI/results_strong'
 make clean
 make all
 
-for i in 1 2 4 8 16 24
+for i in 1 2 4 8 16 #24
 #for i in {1..24};
 do
     mpirun -np ${i} --map-by socket --mca btl ^openib ./main.x >> ${OUT}/stdout_${i}.txt

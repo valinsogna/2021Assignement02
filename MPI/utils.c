@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-// #include "kd_tree.h"
+#include "kd_tree.h"
 #include "utils.h"
+#define EXTENT_DIFF_THRESHOLD 0.5
+#define ROUND_ROBIN_AXIS 1
 
 /**
  * @brief Compute the maximum parallel depth reachable with the given set of

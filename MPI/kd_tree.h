@@ -20,5 +20,5 @@ struct kdnode{
 
 kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex);
 kdnode *build_kdtree( kpoint *points, int ndim, short int axis , int startIndex, int finalIndex, MPI_Comm comm, int np_size, int rank, int depth, int max_depth, int surplus_np);
-
+knode *prepare_build(MPI_Comm comm);
 #endif

@@ -82,7 +82,7 @@ int main(int argc, char **argv){
         tstart = WALL_CLOCK_TIME;
         kdtree = build_kdtree(data, ndim, -1, 0, n-1, MPI_COMM_WORLD, size, my_rank, 0, max_depth, surplus_np);
     } else {
-        kd_tree = prepare_build();
+        kdtree = prepare_build(MPI_COMM_WORLD);
     }
 
     //Wait for all processes to complete to get the wall-clock time

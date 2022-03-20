@@ -2,7 +2,7 @@
 
 #PBS -q dssc_gpu
 #PBS -l nodes=1:ppn=32
-#PBS -l walltime=0:40:00
+#PBS -l walltime=0:30:00
 
 
 cd $PBS_O_WORKDIR
@@ -19,7 +19,7 @@ make all
 
 start=10000000 #10^7
 
-for i in 1 2 4 8 16 24 32
+for i in 1 2 4 8 16 32
 #for i in {1..24};
 do
     a=$(( i * start ))

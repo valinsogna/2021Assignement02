@@ -12,3 +12,17 @@ The nodes are the following:
 (0.00,0.00) -> LEAF 
 (0.00,0.00) -> LEAF 
 
+The parallel kd-tree building tooks 6.915e+00 of wall-clock time
+The nodes evaluated by process 0 are the following:
+(12.50,20.82) -> R: (0.00,0.00) [axis=0] 
+(12.50,20.82) -> L: (11.77,12.50) [axis=0] 
+(11.77,12.50) -> R: (0.00,0.00) [axis=1] 
+(11.77,12.50) -> L: (6.25,4.80) [axis=1] 
+(6.25,4.80) -> R: (0.00,0.00) [axis=0] 
+(6.25,4.80) -> L: (1.28,6.25) [axis=0] 
+(1.28,6.25) -> R: (0.00,0.00) [axis=1] 
+(1.28,6.25) -> L: (3.13,6.14) [axis=1] 
+(0.00,0.00) -> LEAF 
+(0.00,0.00) -> LEAF 
+(0.00,0.00) -> LEAF 
+

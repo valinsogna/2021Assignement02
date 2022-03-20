@@ -19,7 +19,7 @@ make all
 
 start=10000000 #10^7
 
-for i in 1 2 4 8 16 #24
+for i in 1 2 4 8 16
 #for i in {1..24};
 do
     a=$(( i * start ))

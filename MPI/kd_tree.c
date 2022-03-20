@@ -7,6 +7,7 @@
 
 #ifndef PRINT_TREE
 #define PRINT_TREE 1
+#endif
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
 #else
@@ -195,30 +196,17 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
         if (right_rank == -1) {
 
-            #ifdef DEBUG
-            printf("Process [%d]: no available processes, going single core from now\n", rank);
-            #endif
+            PRINTF("Process [%d]: no available processes, going single core from now\n", rank);
 
             if(N_left > 0)
                 new_node->left = serial_build_kdtree( points, ndim, myaxis, startIndex, j - 1);
             if(N_right > 0)
                 new_node->right = serial_build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
         }else{
-            // Left branch continues on same process on deeper depth of the tree
-            if(N_left > 0){
-
-                new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1, comm, np_size, rank, next_depth, max_depth, surplus_np);
-
-                // Set to null the right branch on this process
-                kdnode * missing = malloc(sizeof(kdnode));
-                missing -> axis = -1;
-                missing -> left = NULL;
-                missing -> right = NULL;
-                new_node -> right = missing;
-            }
             // Sending right branch and the other paramteres to the right process
             if(N_right > 0){
 
+                PRINTF("Process [%d]: going on right branch to process %d.\n", rank, right_rank);
                 // int startIndex_R = j + 1;
                 // int finalIndex_R = j + N_right;
                 kpoint * right_points = points + j + 1;
@@ -229,6 +217,21 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
                 // # Send fraction of points to work on the right branch
                 MPI_Send(right_points, N_right * sizeof(kpoint), MPI_BYTE, right_rank, rank, comm);
+            }
+
+            // Left branch continues on same process on deeper depth of the tree
+            if(N_left > 0){
+
+                PRINTF("Process [%d]: going on left branch\n", rank);
+
+                new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1, comm, np_size, rank, next_depth, max_depth, surplus_np);
+
+                // Set to null the right branch on this process
+                kdnode * missing = malloc(sizeof(kdnode));
+                missing -> axis = -1;
+                missing -> left = NULL;
+                missing -> right = NULL;
+                new_node -> right = missing;
             }
         }
 
@@ -262,6 +265,13 @@ kdnode *prepare_build(MPI_Comm comm){
                status.MPI_SOURCE,
                status.MPI_TAG,
                status.MPI_ERROR);
+    
+    if(status.MPI_ERROR != 0){
+        fprintf(stderr, RED "[ERROR]"
+        NC  ": Process did not receive proper data from its parent\n");
+        MPI_Finalize() ;
+        exit(EXIT_FAILURE);
+    }
 
     // Start building the sub-kdtree
     kdnode * sub_kdtree = build_kdtree(points, params[1], params[2], 0, params[0]-1, comm, params[3], params[4], params[5], params[6], params[7]);

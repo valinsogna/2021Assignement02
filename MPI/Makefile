@@ -3,7 +3,7 @@ CC = mpicc
 
 all: executable
 
-debug: CXXFLAGS += -DDEBUG -g
+debug: CXXFLAGS += -DDEBUG
 debug: executable
 
 executable:

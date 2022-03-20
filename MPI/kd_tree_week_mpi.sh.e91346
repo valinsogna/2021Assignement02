@@ -1,9 +1,0 @@
-loading dependency gnu/9.3.0
-loading dependency numactl/2.0.13
-loading dependency hwloc/2.2.0
-TERM environment variable not set.
-make: *** [clean] Error 1
-main.c: In function ‘main’:
-main.c:93:14: warning: ‘tstart’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-   93 |         time = tend - tstart;
-      |         ~~~~~^~~~~~~~~~~~~~~

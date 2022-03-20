@@ -79,6 +79,8 @@ int get_right_process_rank(int rank, int max_depth, int next_depth, int surplus_
   // this has two components: one for non-surplus processes, and one for surplus
   if (next_depth <= max_depth)
     return rank + pow(2.0, max_depth - next_depth);
+//   else if (next_depth == max_depth + 1 && rank < surplus_processes)
+//     return -1;
   else if (next_depth > max_depth && rank < surplus_processes)
     return np_size - surplus_processes + rank;
   else

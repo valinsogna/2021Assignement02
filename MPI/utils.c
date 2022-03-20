@@ -8,7 +8,7 @@
 #define ROUND_ROBIN_AXIS 1
 
 /**
- * @brief Compute the maximum parallel depth reachable with the given set of
+ * Compute the maximum parallel depth reachable with the given set of
  *          processes/threads.
  *
  * Due to the approach used to parallelize the construction of the k-d tree,
@@ -18,32 +18,32 @@
  *
  * This function determines indirectly also the number of "surplus" processes.
  *
- * @param np_size Number of processes/threads available.
- * @return int
+ *  np_size Number of processes/threads available.
+ * 
  */
 int get_max_parallel_depth(int np_size) {
   return log2((double)np_size);
 }
 
 /**
- * @brief Compute the number of surplus processes.
+ * Compute the number of surplus processes.
  *
  * A surplus process is a process assigned to a level of the tree which does
  * not guarantee that every splits has a process ready to take on the right
  * branch. Only some splits have a surplus process, starting from the leftmost
  * split in the tree.
  *
- * @param np_size Number of processes/threads available.
- * @param max_depth Maximum depth which guarantees that there is at least one
+ *  np_size Number of processes/threads available.
+ *  max_depth Maximum depth which guarantees that there is at least one
  *                    idle process.
- * @return int
+ * 
  */
 int get_remaining_processes(int np_size, int max_depth) {
   return np_size - (int)pow(2.0, (double)max_depth);
 }
 
 /**
- * @brief Compute the rank of the process which is going to take on the right
+ * Compute the rank of the process which is going to take on the right
  *          branch after a split occurred.
  *
  * This function does not assign ranks sequentially. This is an example of the
@@ -66,14 +66,14 @@ int get_remaining_processes(int np_size, int max_depth) {
  * 3 -> -1
  * ...
  *
- * @param rank Rank of the process which operated the split.
- * @param max_depth Maximum depth which guarantees that there is at least one
+ *  rank Rank of the process which operated the split.
+ *  max_depth Maximum depth which guarantees that there is at least one
  *                    idle process.
- * @param next_depth Depth of the next level of the tree (the one after the
+ *  next_depth Depth of the next level of the tree (the one after the
  *                    split).
- * @param surplus_processes Number of surplus processes.
- * @param np_size Number of processes/threads available.
- * @return int
+ *  surplus_processes Number of surplus processes.
+ *  np_size Number of processes/threads available.
+ * 
  */
 int get_right_process_rank(int rank, int max_depth, int next_depth, int surplus_processes, int np_size) {
   // this has two components: one for non-surplus processes, and one for surplus

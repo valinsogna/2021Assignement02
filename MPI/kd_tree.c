@@ -5,6 +5,8 @@
 #include "utils.h"
 #include <mpi.h>
 
+#ifndef PRINT_TREE
+#define PRINT_TREE 1
 #if defined(DEBUG)
 #define PRINTF(...) printf(__VA_ARGS__);
 #else
@@ -14,7 +16,7 @@
 // Core function for building the kdtree on one process
 kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, int finalIndex){
     int N = finalIndex-startIndex+1; // Number of elements in points[startIndex..finalIndex]
-    
+
     if( N >= 0){
         // Allocate the memory for a new node with a classical linked-list:
         kdnode *new_node;
@@ -44,13 +46,13 @@ kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startI
 
         if( N == 2 ) {// return a node prior to a leaf with the point *points;
             // PRINTF("Array has size %d and is composed by:\n", N);
-            // PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1], 
+            // PRINTF("(%.2f,%.2f), (%.2f,%.2f)\n", points[startIndex].coord[0], points[startIndex].coord[1],
             // points[finalIndex].coord[0], points[finalIndex].coord[1]);
 
             if(points[startIndex].coord[myaxis] > points[finalIndex].coord[myaxis])
                 swap_kpoint(&points[startIndex], &points[finalIndex]);
-            
-            
+
+
             // return a node with a leaf on the right;
             new_node->axis = myaxis;
             new_node->split.coord[0] = points[startIndex].coord[0];
@@ -61,10 +63,10 @@ kdnode *serial_build_kdtree(kpoint *points, int ndim, short int axis, int startI
             // PRINTF("N=2: (%.2f, %.2f) axis %d\n", new_node->split.coord[0], new_node->split.coord[1], new_node->axis);
             return new_node;
         }
-        
+
         // implement the choice for splitting point
         kpoint *mypoint = choose_splitting_point( points, myaxis, N, startIndex, finalIndex); //the splitting point
-        
+
         // We individuate the left- and right- points with a 2-ways partition.
         // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
         int j= startIndex + N/2;
@@ -136,7 +138,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
     int N = finalIndex-startIndex+1; // Number of elements in points[startIndex..finalIndex]
     int next_depth = depth + 1;
     int right_rank = get_right_process_rank(rank, max_depth, next_depth, surplus_np, np_size);
-    
+
     if( N >= 0){
         // Allocate the memory for a new node with a classical linked-list:
         kdnode *new_node;
@@ -166,8 +168,8 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
             if(points[startIndex].coord[myaxis] > points[finalIndex].coord[myaxis])
                 swap_kpoint(&points[startIndex], &points[finalIndex]);
-            
-            
+
+
             // return a node with a leaf on the right;
             new_node->axis = myaxis;
             new_node->split.coord[0] = points[startIndex].coord[0];
@@ -177,10 +179,10 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
             return new_node;
         }
-        
+
         // implement the choice for splitting point
         kpoint *mypoint = choose_splitting_point( points, myaxis, N, startIndex, finalIndex); //the splitting point
-        
+
         // We individuate the left- and right- points with a 3-ways partition.
         // OSS. points vector is already partitioned among the direction myaxis thanks to choose_splitting_point func:
         int j= startIndex + N/2;
@@ -191,7 +193,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
         new_node->axis = myaxis; //save the splitting dimension ion the new node
         new_node->split = *mypoint; // here we save the kpoint of the splitting point on the new node
 
-        if (right_rank == -1) { 
+        if (right_rank == -1) {
 
             #ifdef DEBUG
             printf("Process [%d]: no available processes, going single core from now\n", rank);
@@ -203,10 +205,10 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
                 new_node->right = serial_build_kdtree( points, ndim, myaxis, j + 1, j + N_right);
         }else{
             // Left branch continues on same process on deeper depth of the tree
-            if(N_left > 0){ 
+            if(N_left > 0){
 
                 new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1, comm, np_size, rank, next_depth, max_depth, surplus_np);
-                
+
                 // Set to null the right branch on this process
                 kdnode * missing = malloc(sizeof(kdnode));
                 missing -> axis = -1;
@@ -223,7 +225,7 @@ kdnode *build_kdtree(kpoint *points, int ndim, short int axis, int startIndex, i
 
                 // # Send params for build_kdtree calling on right branch
                 int params[] = {N_right, ndim, myaxis, np_size, right_rank, next_depth, max_depth, surplus_np};
-                MPI_Send(params, 8, MPI_INT, right_rank, rank, comm); 
+                MPI_Send(params, 8, MPI_INT, right_rank, rank, comm);
 
                 // # Send fraction of points to work on the right branch
                 MPI_Send(right_points, N_right * sizeof(kpoint), MPI_BYTE, right_rank, rank, comm);
@@ -249,25 +251,27 @@ kdnode *prepare_build(MPI_Comm comm){
     kpoint * points = NULL;
 
     // Receive number of points N_right
-    MPI_Recv(params, 8, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status); 
+    MPI_Recv(params, 8, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
     // Allocate new pointer
-    points = malloc(params[0] * sizeof(kpoint)); 
+    points = malloc(params[0] * sizeof(kpoint));
     // Receive fraction of points
-    MPI_Recv(points, params[0] * sizeof(kpoint), MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status); 
-    
-    PRINTF("MPI process %d received points from rank %d, with tag %d and error code %d.\n", 
+    MPI_Recv(points, params[0] * sizeof(kpoint), MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
+
+    PRINTF("MPI process %d received points from rank %d, with tag %d and error code %d.\n",
                params[4],
                status.MPI_SOURCE,
                status.MPI_TAG,
                status.MPI_ERROR);
 
     // Start building the sub-kdtree
-    kdnode * sub_kdtree = build_kdtree(points, params[1], params[2], 0, params[0]-1, comm, params[3], params[4], params[5], params[6], params[7]); 
+    kdnode * sub_kdtree = build_kdtree(points, params[1], params[2], 0, params[0]-1, comm, params[3], params[4], params[5], params[6], params[7]);
+
     // if(PRINT_TREE){
     //         unsigned int depth = 1;
-    //         printf("The nodes are the following:\n");
-    //         printTree(kdtree, depth);
-    // }
+    //         printf("The nodes evaluated by process %d are the following:\n", my_rank);
+    //         printTree(sub_kdtree, depth);
+    //     }
+    // printf("\n");
 
     return sub_kdtree;
 }

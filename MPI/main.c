@@ -95,7 +95,7 @@ int main(int argc, char **argv){
 
         if(PRINT_TREE){
             unsigned int depth = 1;
-            printf("The nodes are the following:\n");
+            printf("The nodes evaluated by process %d are the following:\n", my_rank);
             printTree(kdtree, depth);
         }
         printf("\n");

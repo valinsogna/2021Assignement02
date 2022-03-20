@@ -1,0 +1,4 @@
+rm -f *.x
+rm -f *.o
+clear
+mpicc -Wall -Wextra -std=c99 -O3 main.c kd_tree.c utils.c -o main.x -lm

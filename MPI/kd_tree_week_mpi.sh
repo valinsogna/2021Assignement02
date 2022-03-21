@@ -17,7 +17,7 @@ OUT='/u/dssc/valinsogna/2021Assignement02/MPI/results_week'
 make clean
 make all
 
-start=10000000 #10^7
+start=100000000 #10^8
 
 for i in 1 2 4 8 16
 #for i in {1..24};

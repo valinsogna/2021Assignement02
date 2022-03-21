@@ -353,27 +353,182 @@ The value of $\lambda=0.485 \times 10^{-6}$ $[s]$ and $B= 5530.801 \times 10^{6}
 
 Here I report a comparison between the mean of the 10 measurements with a fixed amount of data $n=10^8$.
 
+```{r, include=FALSE}
+strong_mpi=read.csv("../MPI/results_strong/results.csv", header = TRUE)
+theo_mpi=read.csv("../MPI/results_strong/theo.csv", header = TRUE)
+col_1 <- "#f4c20d"
+col_2 <- "#db3236"
+b <- 0.485*10^{-6}
+l <- 5530.801*10^{6}
+msg_size <- 2*10^{8}*8
+
+```
+
+```{r, echo=FALSE, fig.align='center', out.width="60%"}
+#plotting
+library(ggplot2)
+sp = ggplot() +
+  scale_x_continuous(name="np processes",breaks=strong_mpi$np)  +
+  geom_point(data=strong_mpi, aes(x=np,y=time,color="experimental"),size = 3,shape=17) + 
+  geom_line(data=strong_mpi,aes(x=np,y=time,color="experimental"))+
+  scale_y_continuous(breaks = seq(0,65,5),name = expression(bold("t (s)")))   +
+  geom_point(data=theo_mpi,aes(x=np,y=time,color="theoretical"),size = 3,shape=17) +
+  geom_line(data=theo_mpi,aes(x=np,y=time,color="theoretical")) +
+  scale_color_manual(name="Model", values = c(col_1, col_2))+
+  scale_linetype_manual(values=c(1))+
+  labs(title="Theoretical performance model vs experimental on thin node", subtitle="Execution time vs number of processes") +
+  theme(
+    text = element_text(size=8),
+    plot.title = element_text(size = 10, face = "bold",hjust = 0.5,margin = margin(t = 6)),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
+    axis.title = element_text(face = "bold"), 
+    legend.text = element_text(margin = margin(t = 7, b = 7, r=6)), 
+    axis.title.x = element_text(margin = margin(t = 10, b=6)), 
+    axis.title.y = element_text(margin = margin(r = 8,l=6)), 
+    axis.text = element_text(color= "#2f3030", face="bold"),
+    panel.grid.major = element_line(size = 0.3, linetype = 'solid',
+                                colour = "white"), 
+    panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
+                                colour = "white")
+  )
+
+sp
+
+```
+
 Hence, the overall complexity model seems to describe well the experimental results.
 
 ### Strong scalability
 
+```{r, include=FALSE}
+#strong_mpi=read.csv("../MPI/results_strong/results.csv", header = TRUE)
+strong_mp=read.csv("../OpenMP/results_strong/results.csv", header = TRUE)
+speed1_mpi=read.csv("../MPI/results_strong/speed.csv", header = TRUE)
+speed1_mp=read.csv("../OpenMP/results_strong/speed.csv", header = TRUE)
+col_3 <- "#4885ed"
+col_4 <- "#3cba54"
+```
+
 A number of 10 measurements have been performed for each of the following parameters used:
 
 * $n = 10^8$
-* $np \in {1,2,4,8,16}$
+* $p \in {1,2,4,8,16}$
 
 The following graph reports the mean among the 10 tests for each of the 5 configurations:
+
+```{r, echo=FALSE, fig.align='center', out.width="60%"}
+#plotting
+library(ggplot2)
+sp = ggplot() +
+  scale_x_continuous(name="p processes/tasks",breaks=c(1,2,4,8,16,24))  +
+  geom_point(data=strong_mpi, aes(x=np,y=time,color="MPI"),size = 3,shape=17) + 
+  geom_line(data=strong_mpi,aes(x=np,y=time,color="MPI"))+
+  scale_y_continuous(breaks = seq(0,65,5),name = expression(bold("t (s)")))   +
+  geom_point(data=strong_mp,aes(x=np,y=time,color="OpenMP"),size = 3,shape=17) +
+  geom_line(data=strong_mp,aes(x=np,y=time,color="OpenMP")) +
+  scale_color_manual(name="Version", values = c(col_3, col_4))+
+  scale_linetype_manual(values=c(1))+
+  labs(title="Comparison between parallel versions on thin node", subtitle="Execution time vs processes/tasks") +
+  theme(
+    text = element_text(size=8),
+    plot.title = element_text(size = 10, face = "bold",hjust = 0.5,margin = margin(t = 6)),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
+    axis.title = element_text(face = "bold"), 
+    legend.text = element_text(margin = margin(t = 7, b = 7, r=6)), 
+    axis.title.x = element_text(margin = margin(t = 10, b=6)), 
+    axis.title.y = element_text(margin = margin(r = 8,l=6)), 
+    axis.text = element_text(color= "#2f3030", face="bold"),
+    panel.grid.major = element_line(size = 0.3, linetype = 'solid',
+                                colour = "white"), 
+    panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
+                                colour = "white")
+  )
+
+sp
+
+```
+
+```{r, echo=FALSE, fig.align='center', out.width="60%"}
+#plotting
+library(ggplot2)
+sp = ggplot() +
+  scale_x_continuous(name="p processes/tasks",breaks=c(1,2,4,8,16,24))  +
+  geom_point(data=speed1_mpi, aes(x=np,y=time,color="MPI"),size = 3,shape=17) + 
+  geom_line(data=speed1_mpi,aes(x=np,y=time,color="MPI"))+
+  scale_y_continuous(breaks = seq(0,8,1),name = expression(bold("T(1)/T(p)")))   +
+  geom_point(data=speed_mp,aes(x=np,y=time,color="OpenMP"),size = 3,shape=17) +
+  geom_line(data=speed_mp,aes(x=np,y=time,color="OpenMP")) +
+  scale_color_manual(name="Version", values = c(col_3, col_4))+
+  scale_linetype_manual(values=c(1))+
+  labs(subtitle="Parallel speed up vs processes/tasks") +
+  theme(
+    text = element_text(size=8),
+    plot.title = element_text(size = 10, face = "bold",hjust = 0.5,margin = margin(t = 6)),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
+    axis.title = element_text(face = "bold"), 
+    legend.text = element_text(margin = margin(t = 7, b = 7, r=6)), 
+    axis.title.x = element_text(margin = margin(t = 10, b=6)), 
+    axis.title.y = element_text(margin = margin(r = 8,l=6)), 
+    axis.text = element_text(color= "#2f3030", face="bold"),
+    panel.grid.major = element_line(size = 0.3, linetype = 'solid',
+                                colour = "white"), 
+    panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
+                                colour = "white")
+  )
+
+sp
+
+```
 
 We can see that both MPI and OpenMP programs scale good, but OpenMp version has a slightly better speedup.
 
 ### Week scalability
 
+```{r, include=FALSE}
+weak_mpi=read.csv("../MPI/results_week/results.csv", header = TRUE)
+weak_mp=read.csv("../OpenMP/results_week/results.csv", header = TRUE)
+speed_mpi=read.csv("../MPI/results_week/speed.csv", header = TRUE)
+speed_mp=read.csv("../OpenMP/results_week/speed.csv", header = TRUE)
+```
+
 A number of 10 measurements have been performed for each of the following parameters used:
 
 * $n = 10^8 \times p$
-* $np \in {1,2,4,8,16}$
+* $p \in {1,2,4,8,16}$
 
 The following graph reports the mean among the 10 tests for each of the 5 configurations:
+
+```{r, echo=FALSE, fig.align='center', out.width="60%"}
+#plotting
+library(ggplot2)
+sp = ggplot() +
+  scale_x_continuous(name="p processes/tasks",breaks=c(1,2,4,8,16,24))  +
+  geom_point(data=weak_mpi, aes(x=np,y=time,color="MPI"),size = 3,shape=17) + 
+  geom_line(data=weak_mpi,aes(x=np,y=time,color="MPI"))+
+  scale_y_continuous(breaks = seq(0,65,5),name = expression(bold("t (s)")))   +
+  geom_point(data=weak_mp,aes(x=np,y=time,color="OpenMP"),size = 3,shape=17) +
+  geom_line(data=weak_mp,aes(x=np,y=time,color="OpenMP")) +
+  scale_color_manual(name="Version", values = c(col_3, col_4))+
+  scale_linetype_manual(values=c(1))+
+  labs(title="Comparison between parallel versions on thin node", subtitle="Execution time vs processes/tasks") +
+  theme(
+    text = element_text(size=8),
+    plot.title = element_text(size = 10, face = "bold",hjust = 0.5,margin = margin(t = 6)),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
+    axis.title = element_text(face = "bold"), 
+    legend.text = element_text(margin = margin(t = 7, b = 7, r=6)), 
+    axis.title.x = element_text(margin = margin(t = 10, b=6)), 
+    axis.title.y = element_text(margin = margin(r = 8,l=6)), 
+    axis.text = element_text(color= "#2f3030", face="bold"),
+    panel.grid.major = element_line(size = 0.3, linetype = 'solid',
+                                colour = "white"), 
+    panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
+                                colour = "white")
+  )
+
+sp
+
+```
 
 We can see that both MPI and OpenMp do not scale weakly good, since linear increase of workload and processes/threads doesn't lead to constant time.
 The reason is due to the fact that only from a certain depth of the tree there is no workload imbalance: at the beginning instead the first process/thread must partion an almost entire dataset which keeps growing with weak scalability.

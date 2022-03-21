@@ -1,6 +1,12 @@
 ---
 title: "Assignement 2 Report"
-output: html_document
+author: "Vaeria Insogna"
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  - \usepackage{algpseudocode}
+  - \usepackage{algorithm}
 ---
 
 
@@ -8,1018 +14,427 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Exercise 1
-### Ring
+## Introduction
 
-I have implemented an MPI program in C with $2P$ messages passing among $P$ processes on a ring topology with periodic boundaries.
+The aim of this project is to **build a 2 dimensional kd-tree** with the two main parallel computing paradigmas: OpenMP and MPI.
 
-The program implements a stream of messages of $4B$ each, both clockwise and anticlockwise: each process in fact send/receive messages of **type int** (the $rank$) with a tag proportional to the rank ( $tag=rank*10$ ).
+Kd-trees are a data structures presented originally by Friedman, Bentley and Finkel in 1977 to represent a set of k -dimensional data in order to make them efficiently searchable.
 
-When running on $P$ process, the program prints out in folder *./out* a file *'np*$P$*.txt'* with the following output ordered by rank (here $P=5$):
-\scriptsize
+In order to simplify the task, the following two assumptions hold:
 
-```{bash eval=FALSE}
-I am process 0 and I have received 5 messages. My final messages have tag 0 and value msg-left -10, msg-right 10
-I am process 1 and I have received 5 messages. My final messages have tag 10 and value msg-left -10, msg-right 10
-I am process 2 and I have received 5 messages. My final messages have tag 20 and value msg-left -10, msg-right 10
-I am process 3 and I have received 5 messages. My final messages have tag 30 and value msg-left -10, msg-right 10
-I am process 4 and I have received 5 messages. My final messages have tag 40 and value msg-left -10, msg-right 10
+1. data set, and hence the related kd- tree, is immutable , i.e. you can neglect the insertion/deletion operations;
+2. data points can be assumed to be homogeneously distributed in all the k dimensions.
+
+A 2 dimensional kd-tree is a tree generated from *kpoints* (data points of 2 coordinates each) composed by *kdnodes* whose basic concept is to compare against one dimension at a time per level cycling cleverly through the dimensions so that to keep the tree balanced. At each kd-node, it bisects the data along the chosen dimension, creating a *left-subtree* and a *right-subtree* for which the following conditions hold:
+
+* $\forall x \in subtree_{left}$ $x_i < p_i$
+* $\forall x \in subtree_{right}$ $x_i > p_i$
+
+where $p$ is the pivot element (a kpoint) which creates the kdnode and splits the data set and $i$ indicates the component of the i-th dimension of the kpoint.
+A node which has no children node (in my implementation left and right are NULL pointers) contains only a data point and is called a leaf.
+
+## Algorithm 
+
+In general, the choice of the pivotal point is clearly a critical step in the building of the tree since from that it descends how balanced the resulting tree will be. However, because of assumption 2) I decided to **pick the median element along the chosen dimension as pivot**. 
+
+The basic data structure for a kdnode of the kd-tree is the following:
+
+```{c eval=FALSE}
+struct kdnode{
+	int axis; // the splitting dimension
+	kpoint split; // the splitting element
+	struct kdnode *left, *right; // the left and right sub-trees
+}
 ```
-\normalsize
-
-I have used the following routines for message passing among processes:
-
-* `MPI_Isend`: **non-blocking send** routine
-* `MPI_Irecv`: **non-blocking receive** routine
-* `MPI_Wait`: waits for a non-blocking operation to complete
-
-Using latest version of OpenMPI available on ORFEO (openmpi-4.1.1+gnu-9.3.0), I have run the program up to $P=24$ processes on a **thin node with InfiniBand network and native protocol**.
-
-I have taken notes of the runtime (from the first send/receive to the last) when varying the number of processes $P$ by means of the routine `MPI_Wtime()` which returns an elapsed time on the calling process in seconds.
-
-At each run with $P$ processes, for each process I have taken the mean of the **runtime in microseconds** out of **10000** iterations and print it out (along with some statistics) by ranking order on the file *'np*$P$*.csv'* in folder *./out*, as follows:
-```{r include=FALSE}
-P5_results=read.csv("img/P5_results.csv", header = TRUE)
-7.072714/5
-7.073540/5
-7.072797/5
-7.074060/5
-```
-
-```{r table, echo=FALSE, results='asis'}
-knitr::kable(
-  head(P5_results, 6), booktabs = TRUE,
-  caption = 'Results with P = 5'
-)
+with 
+```{c eval=FALSE}
+struct kpoint{
+    double coord[2];
+};
 ```
 
-Then, by taking for each run with different $P$ only the **maximum value of t_mean** between all processes as measure of the performance, I was able to produce the following plot, running the program with different mappings:
+The generated kd-tree that can be accessed by a kdnode-pointer with a **linked lists of kd-nodes**: the first address being the one that corrispondes to the first splitting kd-node at depth $0$ of the kd-tree. For the MPI version see details in the suitable section.
 
-```{r, include=FALSE}
-t_default=read.csv("./section1/mydata/ring/default/results.csv", header = TRUE)
-t_by_socket=read.csv("./section1/mydata/ring/by_socket/results.csv", header = TRUE)
-t_by_node=read.csv("./section1/mydata/ring/by_node/results.csv", header = TRUE)
-t_by_core=read.csv("./section1/mydata/ring/by_core/results.csv", header = TRUE)
+The implementation of the algorithm used for finding the suitable splitting data point in a specific dimension, consists in the QuickSelect algorithm which finds the median and partially sort the array according to it.
+
+### QuickSelect
+
+Like QuickSort, in an array of size $N$ we pick as a pivot the first element of the array, then move the pivot element to its correct position and partition the surrounding array with a 3-ways partition (wich scans the array linearly time $O(n)$).
+The idea is, **not to do complete QuickSort that might be computationally intense (average case time complexity** $O(nlogn)$**), but stop at the point where pivot itself is k’th smallest element**: in our case $k=n/2$ is the median if $n$ is odd or $k=n/2 +1$ if N is even. 
+The worst case time complexity of this method is $O(n^2)$, but **it works in **$O(n)$ **on average**. 
+
+In the implementation, if the number of left kpoints $n \leq 30$, then instead of the QuickSelect, a more time convenient algorithm for such few kpoints is performed: an **hybrid QuickSort**. It basically performs the InsertionSort ($O(n^2)$ in average) if the points are smaller than 10, otherwise it performs the QuickSort ($O(nlog(n))$ in average).
+
+### Splitting dimension
+
+The choice of dimension for which is perform the splitting of the dataset could also be critical: if the data space is not sufficiently “squared”; otherwise, you may end up with nodes extremely elongated along one direction. 
+
+Once again, because of assumption 2) the simple choice to **round-robin through the dimensions** has been made.
+
+Anyways, in my implementation I have taken this situation into account: by setting the variable `ROUND_ROBIN_AXIS=1`as true in file `kd_tree.c`, then the choice for the splitting dimension will be alternative between the two, otherwise it will depend on the amount of extention of the data in each dimension with the default threshold set as `EXTENT_DIFF_THRESHOLD=0.5`.
+With this algorithm in fact I can check the extent of the data domain along each direction and, if the extents are different by more than the threshold, it chooses as current splitting direction the one with the maximum extent (even if it was used in the previous iteration).
+
+Since setting the `ROUND_ROBIN_AXIS=0` for our case of homogeneously random generated kpoints is not necessary and since it adds another $O(n)$ time complexity to the algorithm (which must scan all the array in the two dimensions to find max and min values for evaluating the extension), I have kept in my analysis a round-robin choice for the splitting dimension.
+
+### OpenMP
+
+The algorithm for building the kd-tree is **recursive** and is done by means of **tasks**: the initial thread calls the function $build\_kdtree$ and it creates two tasks for each generation of the *left-subtree* and *right-subtree*, picked up by the available threads. The pseudocode for $build\_kdtree$ function is the one at reference \ref{alg:cap}.
+
+Oss: the function GET$\_$MEDIAN() returns the median via a pointer to the median kpoint with the QuickSelect algorithm. Moreover, this function takes charge of partioning the array with respect to the median.
+
+\newcommand{\vars}{\texttt}
+\algrenewcommand{\Return}{\State\algorithmicreturn~}
+\begin{algorithm}
+\caption{OpenMP build$\_$kdtree function called by $thread_0$}\label{alg:cap}
+\begin{algorithmic}
+\State $N \gets \# of kpoints$
+\State $ndim \gets 2$
+\State $axis \gets -1$ \Comment{Only starting axis is -1}
+\State $*kpoints \gets \&\{p_1, p_2, ..., p_N\}$ \Comment{Pointer to homo. rand. generated kpoints}
+\State $startIndex \gets 0$ \Comment{Starting index of subsection of kpoints}
+\State $finalIndex \gets N-1$ \Comment{Final index of subsection of kpoints}
+\Function{$*$BUILD$\_$KDTREE}{$kpoints, ndim, axis, startIndex, finalIndex$} \Comment{Ptr to new kdnode}
+  \State $N \gets finalIndex-startIndex+1$; \Comment{\# of kpoints in subsection}
+\If{$N \geq 0$}
+    \State $myaxis \gets (axis+1) \bmod ndim$ \Comment{Round-robin choice of axis}
+    \State $kdnode *\vars{node}$  \Comment{Ptr to new kdnode}
+    \If{$N = 1$} \Comment{Return a leaf}
+    \State $node \rightarrow axis = myaxis$
+    \State $node \rightarrow split = kpoints[startIndex]$
+    \State $node \rightarrow left = null$
+    \State $node \rightarrow right = null$
+    \EndIf 
+    \Return $\vars{node}$
+    \If{$N = 2$} \Comment{Return a node prior to a leaf}
+    \State $node \rightarrow axis = myaxis$
+    \State $node \rightarrow split = kpoints[startIndex]$
+    \State $node \rightarrow left = null$
+    \State $node \rightarrow right = BUILD\_KDTREE(kpoints, ndim, myaxis, finalIndex, finalIndex)$
+    \EndIf 
+    \Return $\vars{node}$
+    \State $kpoint *\vars{median} \gets GET\_MEDIAN(kpoints, myaxis, N, startIndex, finalIndex)$
+    \State  $j \gets startIndex + N/2$ \Comment{Index of median in partitioned subsection}
+    \State $N\_left \gets j - startIndex$
+    \State $N\_right \gets finalIndex - j$
+    \State $node \rightarrow axis = myaxis$
+    \State $node \rightarrow split = *\vars{median}$
+    \If{$N\_left \geq 0$}
+      \State \textbf{Task collected by $thread_i$:}
+      \State $node \rightarrow left = BUILD\_KDTREE(kpoints, ndim, myaxis, startIndex, j - 1 )$
+    \EndIf
+    \If{$N\_right \geq 0$}
+        \State \textbf{Task collected by $thread_j$:}
+        \State $node \rightarrow right = BUILD\_KDTREE(kpoints, ndim, myaxis, j + 1, j + N\_right)$
+    \EndIf 
+    \Return $\vars{node}$
+\Else
+    \State throw error
+\EndIf
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+### MPI
+
+Also for MPI, the algorithm for building the kd-tree is **recursive**.
+The work is shared among the processes and **it works only with number of processes equal to a power of two**. 
+
+The **master process randomly generates all the kpoints** and then it **calls the function** $build\_kdtree$ and **it delegates the work on the right branch to an idle process** (idle means not working process), whilst it remains to work on is *left-subtree*. The choice of the idle process is not trivial: see the Implementation section for reference. Moreover, the master process sends *right-subtree* data to the idle process which is waiting to collect them by function $prepare\_build$.
+
+**After all available processes are busy, the computation becomes serial**.
+
+At the end, each process has its own pointer to a linked list of kdnodes: in future improvements one should implement an additional algorithm to reduce all kdnodes spread among processes via low time complexity merging linked list procedure. 
+The pseudocode for main core of $build\_kdtree$ function is the one at reference \ref{alg:cap2}.
+
+\algrenewcommand{\Return}{\State\algorithmicreturn~}
+\begin{algorithm}
+\caption{MPI core of build$\_$kdtree and prepare$\_$build functions}\label{alg:cap2}
+\begin{algorithmic}
+\Function{$*$BUILD$\_$KDTREE}{$kpoints, ndim, axis, startIndex, finalIndex$}
+  \State $N \gets finalIndex-startIndex+1$;
+\If{$N \geq 0$}
+    \State $myaxis \gets (axis+1) \bmod ndim$ 
+    \State $kdnode *\vars{node}$  
+    \State $kpoint *\vars{median} \gets GET\_MEDIAN(kpoints, myaxis, N, startIndex, finalIndex)$
+    \State  $j \gets startIndex + N/2$ 
+    \State $N\_left \gets j - startIndex$
+    \State $N\_right \gets finalIndex - j$
+    \State $node \rightarrow axis = myaxis$
+    \State $node \rightarrow split = *\vars{median}$
+    \If{\textbf{No idle process left}} \Comment{Start serial}
+      \State $node \rightarrow left = BUILD\_KDTREE\_SERIAL(kpoints, ndim, myaxis, startIndex, j - 1 )$
+      \State $node \rightarrow right = BUILD\_KDTREE\_SERIAL(kpoints, ndim, myaxis, j + 1, j + N\_right)$
+    \Else
+      \If{$N\_right \geq 0$}
+        \State $kpoint *\vars{right\_kpoints} \gets kpoints + j + 1$
+        \State \textbf{Send $\vars{right\_kpoints}$ to idle process}
+        \State $node \rightarrow right = NULL$
+      \EndIf 
+      \If{$N\_left \geq 0$}
+        \State \textbf{Continue building on left branch:}
+        \State $node \rightarrow left = BUILD\_KDTREE(kpoints, ndim, myaxis, startIndex, j - 1 )$
+      \EndIf
+    \EndIf 
+    \Return $\vars{node}$
+\Else
+    \State throw error
+\EndIf
+\EndFunction
+\Function{PREPARE$\_$BUILD}{}
+\State \textbf{Receive $\vars{right\_kpoints}$ from parent process}
+\State $kdnode * \vars{sub\_kdtree} = BUILD\_KDTREE(right\_kpoints, ndim, myaxis, 0, N\_right - 1 )$
+\Return $\vars{sub\_kdtree}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+
+## Implementation
+
+I have implemented the program for building a 2-dimensional kd-tree in **C-language** (in serial and parallel ways) and compiled it with **GNU version 9.3.0** using optimization level `-O3`. 
+
+To make it easier, the program itself generates the data points (kpoints) on which to build the kd-tree: in compliance with assumption 2) they are by default `NDATAPOINTS=10^8` data points **homogeneously distributed** among [0,`MAX`], with `MAX=25`, **of type** `DOUBLE`. Moreover, at run time it's possible to change the number of kpoints by entering it as second argument (being the first argument the name of the executable).
+
+If the variable `PRINT_TREE=1` is set at true in file `main.c`, then the program will print in the standard output eventually the kd-nodes starting from depth 1 to `MAX_DEPTH=4` by default. For the MPI version, only the knodes of process with rank $0$.
+
+### OpenMP
+
+As stated in Algorithm section, the **kdtree is a shared pointer among the threads** and the first available thread starts building the tree:
+
+```{c eval=FALSE}
+#pragma omp parallel shared(data, ndim, kdtree, n)
+    {
+        #pragma omp single nowait 
+        // No syncro barrier at the end (!= single)
+        {
+            kdtree = build_kdtree(data, ndim, -1, 0, n-1);
+        }
+    }
 ```
 
-```{r, include=FALSE}
-col_default <- "#4885ed"
-col_by_socket <- "#3cba54"
-col_by_node <- "#f4c20d"
-col_by_core <- "#db3236"
+Then inside $build_kdtree$ function, the left and right branch evaluation are assigned by tasks to the available other threads:
+
+```{c eval=FALSE}
+if(N_left > 0){
+  #pragma omp task shared(ndim, points) 
+  //myaxis, startIndex, finalIndex are already firstprivate
+  {
+    new_node->left = build_kdtree( points, ndim, myaxis, startIndex, j - 1 );
+  }
+}
 ```
 
-```{r, echo=FALSE, fig.align='center'}
-#plotting
-library(ggplot2)
-sp = ggplot(t_default,aes(x=Np,y=mean,color="default")) +
-  scale_x_continuous(name="P processes",breaks=t_default$Np)  +
-  theme(text = element_text(size=12)) +
-  geom_point(size = 4,shape=17) + geom_line()+scale_y_continuous(breaks = seq(0,70,5),name = expression(bold("t ("*mu*"s)")))   +
-  geom_point(data=t_by_core,aes(x=Np,y=mean,color="by_core"),size = 4,shape=17) +
-  geom_line(data=t_by_core,aes(x=Np,y=mean,color="by_core")) +
-  geom_point(data=t_by_socket,aes(x=Np,y=mean,color="by_socket"),size = 4,shape=17) +
-  geom_line(data=t_by_socket,aes(x=Np,y=mean,color="by_socket")) +
-  geom_point(data=t_by_node,aes(x=Np,y=mean,color="by_node"),size = 4,shape=17) +
-  geom_line(data=t_by_node,aes(x=Np,y=mean,color="by_node")) +
-  scale_color_manual(name="Run", values = c(col_by_core, col_by_node, col_by_socket, col_default))+
-  scale_linetype_manual(values=c(1))+
-  labs(title="Ring on THIN node", subtitle="Execution time per slower process vs number of processes") +
-  theme(plot.title = element_text(size = 15, face = "bold",hjust = 0.5,margin = margin(t = 6)), plot.subtitle = element_text(size = 12, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), axis.title = element_text(face = "bold"), legend.text = element_text(margin = margin(t = 7, b = 7, r=6)), axis.title.x = element_text(margin = margin(t = 10, b=6)), axis.title.y = element_text(margin = margin(r = 8,l=6)), axis.text = element_text(color= "#2f3030", face="bold")) +
-  theme(
-#  panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0",
-#                               size = 2, linetype = "solid"),
-  panel.grid.major = element_line(size = 0.3, linetype = 'solid',
-                                colour = "white"), 
-  panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
-                                colour = "white")
-  )
+### MPI
 
-sp
+The major issue in the implementation of the MPI algorithm is to find an idle process to which delegate the computation of the right branch, when the number of processes is a power of two.
 
-```
+Since at each kdnode, the data set is partitioned in two sets with two different branches (right and left), the maximum parallel depth reachable with the given set of $np$ processes (starting from 0) is:
 
-Because of the routines that I have used in the program, **I expect my data to be in compliance with a $P$ double PingPing model**. 
+\begin{equation}
+depth_{max} = log_{2}{(np)}
+\end{equation}
 
-By means of **IMB-MPI1 PingPing benchmark** it's possible to measure startup $\Delta t$ and throughput $\frac{X}{\Delta t}$ of single messages of size $X$ that are obstructed by oncoming messages. To achieve this, two processes communicate with each other using *MPI_Isend/MPI_Recv/MPI_Wait* calls, just like in my program, as follows:
+Due to the approach used to parallelize the construction of the k-d tree, there in fact this maximum depth up to which every split is guaranteed to have at least one process ready to take on the right branch.
 
-```{r, echo=FALSE, warning=FALSE, message = FALSE, out.width="40%", fig.cap="Fig.1 PingPing Pattern from Intel® MPI Benchmarks User Guide and Ring with P=3.",fig.align='center',fig.show='hold'}
-library(magick)
-ring_ping <- image_read("./img/ring_ping.png")
-ring_ping_with_border <- image_border(ring_ping, "white", "40x10")
-image_write(ring_ping_with_border, "./img/ring_ping_with_border.png")
-knitr::include_graphics(c("./img/pingping.png","./img/ring_ping_with_border.png"))
-```
+Thus, the approach I have chosen is to **use a strict pattern for the evaluation of the idle process rank based on the original process rank, the current depth of the kdtree and the number of processes involved**:
 
-With IMB-MPI1 PingPing benchmark I was able to estimate the latency $\lambda_{net}$ and bandwidth $b_{net}$ on Infiniband network with different processes mappings: across nodes, sockets and cores.
-Since my $t_{mean}$ is a measure of time in $\mu s$ of a pair of opposite messages passing through all $P$ process till returning back to the original one, $t_{xmsg}=\frac{t_{mean}}{P}$ is the variable accounting for half of the $\Delta t$ time measured from the PingPing benchmark results.
+\begin{equation}
+rank_{right} = rank_{current} + \frac{np}{2^{depth+1}}
+\end{equation}
 
-Thus, by taking the inverse of the previous relation $t_{mean}=t_{xmsg}P$, our theoretical model will be $t_{theo}=2\Delta t_{ping}{P}$, where $\Delta t_{ping} = \lambda_{ping} + \frac{4B}{b_{ping}}$ with $\lambda_{ping}$ and $b_{ping}$ estimated by least square method on the PingPing benchmark results.
+Then if $log_{2}{(np)} \geq depth_{current}$ at some point in the iteration of the $build\_tree()$ function, the $rank_{right} = -1$ and the computation becomes serial in each process.
 
-Hence, the following communication model has been used for plotting my data with the PingPing model:
+In this way, it is ensured that the rank given by the formula is free and ready to work.
 
-* $t(P)=2P(\lambda_{core} + \frac{4B}{b_{core}})$ for **core mapping when $P\leq 12$**.
-* $t(P)=2P(\lambda_{socket} + \frac{4B}{b_{socket}})$ for **core mapping when $P=13$**, assuming that the process chosen as representative of my running is the one with the maximum value of $t_{mean}$, hence the one wich is in the other socket farther from the others 12 cores.
-* $t(P)=P(\lambda_{core} + \frac{4B}{b_{core}})+P(\lambda_{socket} + \frac{4B}{b_{socket}})$ for **core mapping when $P>13$**, assuming again that the slower process is the one communicating with the previous core which is in the other socket, and the next core which is inside its socket.
-* $t(P)=2P(\lambda_{socket} + \frac{4B}{b_{socket}})$ for **socket mapping**.
-* $t(P)=2P(\lambda_{core} + \frac{4B}{b_{core}})$ for **node mapping**.
-
-```{r, include=FALSE}
-ring_model_core <- t_by_core
-ring_model_socket <- t_by_socket
-ring_model_node <- t_by_node
-ring_model_node2 <- t_by_node
-core_latency=0.264
-socket_latency=0.485
-node_latency=0.996
-b_core <- 6372.991
-b_socket <- 5530.801
-b_node <- 11945.604
-msg_size <- 4/10^6
-
-msg_size/b_core
-msg_size/b_socket
-msg_size/b_node
-core_latency + (msg_size/b_core)
-socket_latency + (msg_size/b_socket)
-core_jump <- ring_model_core$mean[ring_model_core$Np==13] - ring_model_core$mean[ring_model_core$Np==12]
-ring_model_core$mean[ring_model_core$Np<=12]=ring_model_core$Np[ring_model_core$Np<=12]*(core_latency + (msg_size/b_core))*2
-ring_model_core$mean[ring_model_core$Np>12]=ring_model_core$Np[ring_model_core$Np>12]*(socket_latency + (msg_size/b_socket)) + ring_model_core$Np[ring_model_core$Np>12]*(core_latency + (msg_size/b_core))
-
-ring_model_core$mean[ring_model_core$Np==13]=ring_model_core$Np[ring_model_core$Np==13]*(socket_latency + (msg_size/b_socket))*2
-
-ring_model_socket$mean=ring_model_socket$Np*(socket_latency + (msg_size/b_socket))*2
-
-ring_model_node$mean=ring_model_node$Np*(node_latency + (msg_size/b_node))*2
-
-ring_model_node2$mean=ring_model_node2$Np*(1.35 + (msg_size/b_node))
-```
-
-```{r, echo=FALSE, warning=FALSE, message = FALSE, fig.align='center', out.width="100%"}
-lab_core <- as.character(expression('t(N)'=='2N'*(lambda[cor]+frac(4*'B', b[cor]))))
-lab_core2 <- as.character(expression('t(N)'=='N'*(lambda[cor]+frac(4*'B', b[cor]))+'N'*(lambda[soc]+frac(4*'B', b[soc]))))
-lab_socket <- as.character(expression('t(N)'=='2N'*(lambda[soc]+frac(4*'B', b[soc]))))
-lab_node <- as.character(expression('t(N)'=='2N'*(lambda[nod]+frac(4*'B', b[nod]))))
-lab_node2 <- as.character(expression('t(N)'=='N'*(1.35 +frac(4*'B', b[nod]))))
-
-sp = ggplot(t_by_core,aes(x=Np,y=mean,color="by core",linetype="Exp data"))  +
-  scale_y_continuous(name= expression(bold("t ("*mu*"s)")),breaks = seq(0,45,by=5))+
-  scale_x_continuous(name="P processes",breaks = t_by_core$Np) +
-  geom_point(size = 3,shape=17) + 
-  geom_line()  + 
-  theme(text = element_text(size=10)) +
-  geom_line(data=ring_model_core,aes(x=Np,y=mean,color="by core",linetype="Model")) +    
-  geom_point(data=t_by_socket,aes(x=Np,y=mean,color="by socket"),size = 3,shape=17) +
-  geom_line(data=t_by_socket,aes(x=Np,y=mean,color="by socket",linetype="Exp data"))+
-  geom_line(data=ring_model_socket,aes(x=Np,y=mean,color="by socket",linetype="Model"))+
-  geom_line(data=ring_model_node,aes(x=Np,y=mean,color="by node",linetype="Model"))+
-  geom_point(data=t_by_node,aes(x=Np,y=mean,color="by node"),size = 3,shape=17) +
-  geom_line(data=t_by_node,aes(x=Np,y=mean,color="by node",linetype="Exp data"))+
-  geom_line(data=ring_model_node2,aes(x=Np,y=mean,linetype="Model"), color="#104ec9")+
-  scale_color_manual(name="Run", values = c(col_by_core, col_by_node, col_by_socket, col_default))+
-  scale_linetype_manual(name="Data",values=c(1,2))+
-  geom_text(x = 8, y = 2, label = lab_core, color = col_by_core, size=2, parse = T) + 
-  geom_text(x = 18, y = 10.7, label = lab_core2, color = col_by_core, size=2, parse = T) +
-  geom_text(x = 16, y = 18, label = lab_socket, color = col_by_socket, size=2, parse = T) +
-  geom_text(x = 15, y = 27, label = lab_node, color = "#ffbf00", size=2, parse = T) +
-  geom_text(x = 21, y = 25, label = lab_node2, color = "#104ec9", size=2, parse = T) +
-  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5,margin = margin(t = 6)), 
-        plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
-        axis.title = element_text(face = "bold"), 
-        legend.text = element_text(margin = margin(t = 4, b = 4, r=4), size=8), 
-        legend.title = element_text(size = 9),
-        axis.title.x = element_text(margin = margin(t = 8, b=6)), 
-        axis.title.y = element_text(margin = margin(r = 10,l=8)), 
-        axis.text = element_text(color= "#2f3030", face="bold"), 
-        plot.caption = element_text(color = "darkblue", face = "italic", size = 10, margin = margin(b =6))
-        ) +
- labs(title="Ring comparison with PingPing model of 4B message", subtitle="Execution time vs number of processes", caption = bquote(paste(lambda[cor], "= ", .(core_latency), ",  ", lambda[soc], "= ", .(socket_latency), ", ",  lambda[nod], "= ", .(node_latency)))) +
- theme(
-#  panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0",
-#                               size = 2, linetype = "solid"),
-  panel.grid.major = element_line(size = 0.3, linetype = 'solid',
-                                colour = "white"), 
-  panel.grid.minor = element_line(size = 0.17, linetype = 'solid',
-                                colour = "white")
-  )
-sp
-```
-
-Oss. The extimated bandwiths of the network for the different mappings are:
-
-* $b_{core}$ = 6372.991 MB/s
-* $b_{socket}$ = 5530.801 MB/s
-* $b_{node}$ = 11945.604 MB/s
-
-As expected, the measured bandwith for the 100 Gbit InfiniBand network (process message passing among nodes) reaches up to approximately 12000 MB/s ($= 12$ GB/s $= 12 *8$ Gbit/s $= 96$ Gbit/s) which is $96\%$ of the theoretical peak performance.
-Anyway this term in the model can easily be omitted since it's in the order of $10^{-10}$.
-
-The estimated latency between two nodes $\lambda_{node}$ with the PingPing benchmark is somewhat less than the one declared by Mellanox switch constructor ($1.35$ $\mu s$) used in InfiniBand network: this fact seems to hold when few processes are communicating.
-
-I was indeed expecting that the theoretical performance (evaluated by PingPing benchmark among just 2 process) would have been better than the real scenario when all cores/sockets in nodes are being used simultaneously, and in fact as can be seen from the previous plot, **my model seems to work good for core and socket mapping**, but quite bad for node mapping.
-
-Data from node mapping seem to follow another model that is half the expected one: $t(P)=P(\lambda_{mlx5} + \frac{4B}{b_{node}})$, where $\lambda_{mlx5}=1.35$ is the latency of the Mellanox switch indeed. This may suggest that the *switch is able to send simultaneously 2 messages of $4B$ in each direction of the network, halving the time for message passing* between processes placed in different nodes.
-
-## Exercise 2
-### Measure MPI point to point performance
-
-The **Intel MPI IMB-MPI1 benchmark PingPong** has been used to estimate latency $\lambda_{net}$ and bandwidth $b_{net}$ of *all available combinations of topologies and networks on ORFEO computational nodes, using both IntelMPI and openmpi latest versions* libraries availables.
-
-Let's start by looking at ORFEO computational nodes and resources:
-\scriptsize
-
-```{bash pbsnodes, eval=FALSE, warning=FALSE }
-[valinsogna@login 2021Assignement01]$ pbsnodes -ajS
-                                                        mem       ncpus   nmics   ngpus
-vnode           state           njobs   run   susp      f/t        f/t     f/t     f/t   jobs
---------------- --------------- ------ ----- ------ ------------ ------- ------- ------- -------
-ct1pf-fnode001  job-busy             1     1      0    560gb/1tb    0/36     0/0     0/0 56793
-ct1pf-fnode002  free                 1     1      0      1tb/1tb   12/36     0/0     0/0 55267
-ct1pt-tnode001  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56845
-ct1pt-tnode002  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56846
-ct1pt-tnode004  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56847
-ct1pt-tnode005  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56794
-ct1pt-tnode006  free                 0     0      0  754gb/754gb   24/24     0/0     0/0 --
-ct1pt-tnode007  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56795
-ct1pt-tnode008  job-busy             1     1      0   54gb/754gb    0/24     0/0     0/0 56848
-ct1pt-tnode009  job-busy             1     1      0  754gb/754gb    0/24     0/0     0/0 57073
-ct1pt-tnode010  job-busy             1     1      0  754gb/754gb    0/24     0/0     0/0 57073
-ct1pt-tnode003  offline              0     0      0  754gb/754gb   24/24     0/0     0/0 --
-ct1pg-gnode001  free                 1     1      0  252gb/252gb   44/48     0/0     0/0 57057
-ct1pg-gnode002  free                 1     1      0  252gb/252gb   24/48     0/0     0/0 56354
-ct1pg-gnode003  free                 1     1      0  252gb/252gb   24/48     0/0     0/0 56862
-ct1pg-gnode004  free                 0     0      0  252gb/252gb   48/48     0/0     0/0 --
-```
-\normalsize
-
-On ORFEO there are:
-
-- 2 fat nodes: with 2 CPUs (2 NUMA domains) of 18 cores each, with more than 1 TB of RAM.
-- 4 gpu nodes: with hyper-threading enabled, with 2 CPUs (2 NUMA domains) of 12 physical cores each with more than 252 GB of RAM.
-- 10 thin nodes: with 2 CPUs (2 NUMA domains) of 12 cores each, with more than 754 GB of RAM.
-- login node: with 2 CPUs (2 NUMA domains) of 10 cores each.
-
-**The MPI point to point performance has been measured only on thin and gpu nodes**.
-
-### Topology of tested nodes
-Now we can look at the node topologies for the thin and gpu ones. 
-This can be either done by typing on the selected node `module load likwid` and then `likwid-topology` or using `module load hwloc` and  `lstopo`.
-The figure below represents the lstopo output on a thin node, which is more or less the same for the gpu node. 
-
-```{r, echo=FALSE, out.width="55%", fig.cap="Fig.2 Topology on thin node", fig.align='center'}
-knitr::include_graphics("./img/lstopo.png")
-```
-
-The main differences between a gpu and a thin node are the hyper-threading enabled on the previous, the different RAM size and the different CPUs models:
-
-* Intel(R) Xeon(R) Gold 6226 CPU @ **2.70GHz** for gpu node
-* Intel(R) Xeon(R) Gold 6126 CPU @ **2.60GHz** for thin node
-
-As can be seen by typing `lscpu`:
-\scriptsize
-
-```{bash lscputhin, eval=FALSE, warning=FALSE}
-[valinsogna@ct1pt-tnode008 ~]$ lscpu
-Architecture:          x86_64
-CPU op-mode(s):        32-bit, 64-bit
-Byte Order:            Little Endian
-CPU(s):                24
-On-line CPU(s) list:   0-23
-Thread(s) per core:    1
-Core(s) per socket:    12
-Socket(s):             2
-NUMA node(s):          2
-Vendor ID:             GenuineIntel
-CPU family:            6
-Model:                 85
-Model name:            Intel(R) Xeon(R) Gold 6126 CPU @ 2.60GHz
-Stepping:              4
-CPU MHz:               3299.999
-CPU max MHz:           3700.0000
-CPU min MHz:           1000.0000
-BogoMIPS:              5200.00
-L1d cache:             32K
-L1i cache:             32K
-L2 cache:              1024K
-L3 cache:              19712K
-NUMA node0 CPU(s):     0,2,4,6,8,10,12,14,16,18,20,22
-NUMA node1 CPU(s):     1,3,5,7,9,11,13,15,17,19,21,23
-```
-
-```{bash lscpugpu, eval=FALSE, warning=FALSE, fig.width=1 }
-[valinsogna@ct1pg-gnode001 ~]$ lscpu
-Architecture:          x86_64
-CPU op-mode(s):        32-bit, 64-bit
-Byte Order:            Little Endian
-CPU(s):                48
-On-line CPU(s) list:   0-47
-Thread(s) per core:    2
-Core(s) per socket:    12
-Socket(s):             2
-NUMA node(s):          2
-Vendor ID:             GenuineIntel
-CPU family:            6
-Model:                 85
-Model name:            Intel(R) Xeon(R) Gold 6226 CPU @ 2.70GHz
-Stepping:              7
-CPU MHz:               3499.999
-CPU max MHz:           3700.0000
-CPU min MHz:           1200.0000
-BogoMIPS:              5400.00
-Virtualization:        VT-x
-L1d cache:             32K
-L1i cache:             32K
-L2 cache:              1024K
-L3 cache:              19712K
-NUMA node0 CPU(s):     0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46
-NUMA node1 CPU(s):     1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47
-```
-\normalsize
-
-### Networks and protocols used
-- High Speed Network **100 Gbit InfiniBand**: with $peak$ $perf_{theo}$ of 100 Gbit/s = 12.5 GB/s = **12500 MB/s**;  eq. $(1)$
-- In band management network **25 Gbit Ethernet**: with $peak$ $perf_{theo}$ of 25 Gbit/s = 3.125 GB/s = **3125 MB/s**;   eq. $(2)$
-
-The main differences among these two are the usage of Sockets Interface and TCP/IP protocol for the Ethernet network, and the usage of much more rapid OpenFabrics Verbs (no Kernel stack) with the native IB protocol for InfiniBand network.
-Moreover, IB protocol has RDMA (Remote Direct Memory Access) that makes InfiniBand faster: it is an operation which access the memory directly  without involving the CPU.
-We thus, expect InfiniBand network with native IB protocol to be much faster (low $\lambda_{net}$, high $b_{net}$) then the Ethernet network.
-Moreover, I am going to test also InfiniBand network performance when applying plain IP protocol: **IPoIB (IP-over-InfiniBand) is the protocol that defines how to send IP packets over IB**, passing through the Kernel space.
-
-As can be seen from Fig.2, the network cards are placed in each node only inside one of the two NUMA domains, and there are several PCI (Peripherical Component Interconnect) devices that can be seen by typing `ifconfig`:
-
-\scriptsize
-```{bash ifconfig, eval=FALSE }
-[valinsogna@ct1pt-tnode007 ~]$ ifconfig
-bond0: flags=5187<UP,BROADCAST,RUNNING,MASTER,MULTICAST>  mtu 1500
-        inet6 fe80::3680:dff:fe4e:5568  prefixlen 64  scopeid 0x20<link>
-        ether 34:80:0d:4e:55:68  txqueuelen 1000  (Ethernet)
-
-br0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 10.128.2.127  netmask 255.255.255.0  broadcast 10.128.2.255
-        inet6 fe80::3680:dff:fe4e:5568  prefixlen 64  scopeid 0x20<link>
-        ether 34:80:0d:4e:55:68  txqueuelen 1000  (Ethernet)
-
-em1, em2 two physical cards that we have on the node
-em1: flags=6211<UP,BROADCAST,RUNNING,SLAVE,MULTICAST>  mtu 1500
-        ether 34:80:0d:4e:55:68  txqueuelen 1000  (Ethernet)
-
-em2: flags=6211<UP,BROADCAST,RUNNING,SLAVE,MULTICAST>  mtu 1500
-        ether 34:80:0d:4e:55:68  txqueuelen 1000  (Ethernet)
-
-ib0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 2044
-        inet 10.128.6.127  netmask 255.255.255.0  broadcast 10.128.6.255
-        inet6 fe80::ba59:9f03:d4:27d6  prefixlen 64  scopeid 0x20<link>
-Infiniband hardware address can be incorrect! Please read BUGS section in ifconfig(8).
-        infiniband 00:00:09:07:FE:80:00:00:00:00:00:00:00:00:00:00:00:00:00:00  txqueuelen 256  (InfiniBand)
-
-lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
-        inet 127.0.0.1  netmask 255.0.0.0
-        inet6 ::1  prefixlen 128  scopeid 0x10<host>
-        loop  txqueuelen 1000  (Local Loopback)
-```
-\normalsize
-
-As from above, **em1, em2 are two physical distinguished Ethernet cards that refers to one interface br0**, whilst **ib0 is InfiniBand**.
-More details are shown below with `lstopo`:
-\scriptsize
-
-```{bash lstopo2, eval=FALSE }
-[valinsogna@ct1pt-tnode007 ~]$ lstopo
-Machine (754GB total)
-  Package L#0
-    NUMANode L#0 (P#0 376GB)
-    L3 L#0 (19MB)
-      L2 L#0 (1024KB) + L1d L#0 (32KB) + L1i L#0 (32KB) + Core L#0 + PU L#0 (P#0)
-      L2 L#1 (1024KB) + L1d L#1 (32KB) + L1i L#1 (32KB) + Core L#1 + PU L#1 (P#2)
-      ...
-    HostBridge
-      PCI 00:11.5 (SATA)
-      PCI 00:17.0 (SATA)
-      PCIBridge
-        PCIBridge
-          PCI 03:00.0 (VGA)
-    HostBridge
-      PCIBridge
-        PCI 18:00.0 (RAID)
-          Block(Disk) "sda"
-      PCIBridge
-        PCI 19:00.0 (Ethernet)
-          Net "em1"
-        PCI 19:00.1 (Ethernet)
-          Net "em2"
-    HostBridge
-      PCIBridge
-        PCI 3b:00.0 (InfiniBand)
-          Net "ib0"
-          OpenFabrics "mlx5_0"
-```
-\normalsize
-
-With openMPI implementation and UCX, it's possible to directly select the devices (using `UCX_NET_DEVICES` specification in the run command), that lead to a specific protocol as consequence. **The devices tested with openMPI across nodes are:**
-
-* **ib0: IPoIB protocol.**
-* **br0: TCP communication, Ethernet.**
-* **mlx5_0:1: native IB protocol.**
-
-```{r, echo=FALSE, out.width="55%", fig.cap="TCP/IP, IPoIB and native IB protocols", fig.align='center'}
-knitr::include_graphics("./img/devices.png")
-```
-
-### IMB-MPI1 Benchmark PingPong
-Intel MPI benchmark IMB-MPI1 PingPong measure message passing between two processes and works as follow:
-
-```{r, echo=FALSE, out.width="35%", fig.cap="PingPong Pattern from Intel® MPI Benchmarks User Guide", fig.align='center'}
-knitr::include_graphics("./img/pingpong.png")
-```
-
-It reports the time $\Delta t/2$ (in $\mu s$), throughput $\frac{2X}{\Delta t}$ (in MB/s), number of repetitions and the message size $X$ (in B) in the standard output:
+The following is an example of the $rank_{right}$ evaluation with $np=8$ processes (i.e. $depth_{max}=3$).
 
 \scriptsize
 ```{bash eval=FALSE}
-#---------------------------------------------------
-# Benchmarking PingPong 
-# #processes = 2 
-#---------------------------------------------------
-       #bytes #repetitions      t[usec]   Mbytes/sec
-            0,        1000,       0.20,       0.00
-            1,        1000,       0.21,       4.90
-            2,        1000,       0.20,       10.07
-            4,        1000,       0.22,       20.26
-            8,        1000,       0.24,       40.59
+--- level 0 ----
+rank = 0 -> right_rank = 4
+--- level 1 ----
+rank = 0 -> right_rank = 2
+rank = 4 -> right_rank = 6
+--- level 2 ----
+rank = 0 -> right_rank = 1
+rank = 2 -> right_rank = 3
+rank = 4 -> right_rank = 5
+rank = 6 -> right_rank = 7
 ```
 \normalsize
 
-### Measurements
-**The bandwidth and the latency estimation for gpu and thin nodes is done across cores, sockets and nodes**, with different protocols, PCI devices and libraries. 
-
-The nodes involved are:
-
-* ct1pt-tnode007, thin node for results across cores, sockets and nodes.
-* ct1pt-tnode008, thin node for results across nodes.
-* ct1pg-gnode001, gpu node for results across cores, sockets and nodes.
-* ct1pg-gnode003, gpu node for results across nodes.
-
-**Each specific run is repeated 10 times** with `-msglog 28` and each time **for the thin ones the entire node was reserved** in order to reduce noise in measurements, **instead for the gpu nodes it wasn't possible due to some queue traffic**. Thus, from the measurements, it was taken the mean time $\Delta t/2$ and the mean throughput $2X/\Delta t$ between the 10 results for each message size $X$, along with some statistics (ex. maximum error on time and on throughput $e = \frac{t_{max} - t_{min}}{2}$).
-
-The PingPong benchmark is compiled on either the thin or gpu node using two different libraries:
-
-* **OpenMPI**: version **openmpi-4.0.3** for the running across nodes with `UCX_NET_DEVICES` specification and latest **openmpi-4.1.1** for the others.
-* **Intel MPI**: version `intel` available on ORFEO.
-
-With **OpenMPI** implementation it is possible to specify the MPI frameworks and plugins (like pml and btl) that can be used while running. 
-Across nodes, cores and sockets the following as been tested:
-
-* *PML* : **ob1** and **ucx**. 
-* *BTL* : **tcp**, **self** and **vader**. 
-
-The following graphs show the results both for thin and gpu nodes from plotting the benchmark throupout $2X/\Delta t$ against the message size $X$ with different mappings of the processes: across two different nodes for the first plot and across two sockets or in the same socket for the latter. 
-
-Along with the results of 'across nodes' mapping, there has been drawn the lines for the 100 Gbit InfiniBand and 25 Gbit Ethernet, in order to compare the theoretical peak performances with the tested ones.
-
-Moreover, in the plot 'by socket/core' mapping, cache size lines have been drawn too in order to discuss about a general behavior.
+See section Discussion for future implementation of the choice of the right rank with a number of process not strictly as a power of two, but in the general case of $2^k+1$ with $k \in N$.
 
 
-```{r, include=FALSE}
-node_ib=read.csv("section2/mydata/openmpi_lib/thin/out/node_ib.out.csv", header = TRUE)
-node_ob1_tcp=read.csv("section2/mydata/openmpi_lib/thin/out/node_ob1_selftcp.out.csv", header = TRUE)
-node_ucx_br0=read.csv("section2/mydata/openmpi_lib/thin/out/node_ucx_br0.out.csv", header = TRUE)
-node_ucx_ib0=read.csv("section2/mydata/openmpi_lib/thin/out/node_ucx_ib0.out.csv", header = TRUE)
-node_ucx_mlx5=read.csv("section2/mydata/openmpi_lib/thin/out/node_ucx_mlx5.out.csv", header = TRUE)
+In order to send/receive data from/to the right branch in the parallel phase, the following MPI routines has been used: `MPI_Send` and `MPI_Recv`.
 
-socket_ib=read.csv("section2/mydata/openmpi_lib/thin/out/socket_ib.out.csv", header = TRUE)
-socket_ob1_tcp=read.csv("section2/mydata/openmpi_lib/thin/out/socket_ob1_selftcp.out.csv", header = TRUE)
-socket_ob1_vader=read.csv("section2/mydata/openmpi_lib/thin/out/socket_ob1_selfvader.out.csv", header = TRUE)
+## Performance model and scaling
 
-core_ib=read.csv("section2/mydata/openmpi_lib/thin/out/core_ib.out.csv", header = TRUE)
-core_ob1_tcp=read.csv("section2/mydata/openmpi_lib/thin/out/core_ob1_selftcp.out.csv", header = TRUE)
-core_ob1_vader=read.csv("section2/mydata/openmpi_lib/thin/out/core_ob1_selfvader.out.csv", header = TRUE)
+### MPI case
 
-```
+In this section I am going to show the performance model of the **execution time for generating the kdtree in the MPI program** in order to check whether it resembles the actual measurements of the wall-clock time taken.
 
-```{r, include=FALSE}
-socket_ib_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/socket_ib.out.csv", header = TRUE)
-socket_ob1_tcp_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/socket_ob1_selftcp.out.csv", header = TRUE)
-socket_ob1_vader_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/socket_ob1_selfvader.out.csv", header = TRUE)
+The MPI has two different phases:
 
-core_ib_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/core_ib.out.csv", header = TRUE)
-core_ob1_tcp_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/core_ob1_selftcp.out.csv", header = TRUE)
-core_ob1_vader_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/core_ob1_selfvader.out.csv", header = TRUE)
-
-node_ib_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/node_ib.out.csv", header = TRUE)
-node_ob1_tcp_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/node_ob1_selftcp.out.csv", header = TRUE)
-node_ucx_br0_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/node_ucx_br0.out.csv", header = TRUE)
-node_ucx_ib0_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/node_ucx_ib0.out.csv", header = TRUE)
-node_ucx_mlx5_gpu=read.csv("section2/mydata/openmpi_lib/gpu/out/node_ucx_mlx5.out.csv", header = TRUE)
-```
-
-```{r, include=FALSE}
-node_ib_intel=read.csv("section2/mydata/intel_lib/thin/out/node.out.csv", header = TRUE)
-socket_ib_intel=read.csv("section2/mydata/intel_lib/thin/out/socket.out.csv", header = TRUE)
-core_ib_intel=read.csv("section2/mydata/intel_lib/thin/out/core.out.csv", header = TRUE)
-def_intel=read.csv("section2/mydata/intel_lib/thin/out/def.out.csv", header = TRUE)
-```
-
-
-```{r, include=FALSE}
-socket_ib_intel_gpu=read.csv("section2/mydata/intel_lib/gpu/out/socket.out.csv", header = TRUE)
-core_ib_intel_gpu=read.csv("section2/mydata/intel_lib/gpu/out/core.out.csv", header = TRUE)
-node_ib_intel_gpu=read.csv("section2/mydata/intel_lib/gpu/out/node.out.csv", header = TRUE)
-def_intel_gpu=read.csv("section2/mydata/intel_lib/gpu/out/def.out.csv", header = TRUE)
-```
-
-
-```{r, include=FALSE}
-col_ib="#1B9E77" #verde freddo
-col_ib_intel="#E6AB02" #giallo
-col_ob1_tcp="#7570B3" #viola
-col_ob1_vader="#E7298A" #fucsia
-col_ucx_br0="#D95F02" #verde caldo
-col_ucx_ib0="#A6761D" #ocra
-col_ucx_mlx5="#66A61E" #grigio
-```
-
-```{r, echo=FALSE, warning=FALSE, message = FALSE, fig.align='center'}
-#plotting BY NODE openmpi e intel - THIN bandwith
-library(ggplot2)
-sp = ggplot(node_ib,aes(x=X.bytes,y=mbs,color="UCX IB")) + 
-  scale_x_continuous(trans='log',name="Size message (Bytes)",breaks=node_ib$X.bytes)+scale_y_continuous(breaks = seq(0,13000,1000),name = expression(bold("Throughput (MB/s)")))  +
-  geom_point(size = 3,shape=20) + geom_line(aes(color="UCX IB", linetype="by node"))  + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  geom_point(data=node_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + 
-  geom_line(data=node_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp", linetype="by node")) +   
-  geom_point(data=node_ucx_br0,aes(x=X.bytes,y=mbs,color="UCX br0"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_br0,aes(x=X.bytes,y=mbs,color="UCX br0", linetype="by node")) +   
-  geom_point(data=node_ucx_ib0,aes(x=X.bytes,y=mbs,color="UCX ib0"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_ib0,aes(x=X.bytes,y=mbs,color="UCX ib0", linetype="by node")) +  
-  geom_point(data=node_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + 
-  geom_line(data=node_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB", linetype="by node")) +
-  geom_point(data=node_ucx_mlx5,aes(x=X.bytes,y=mbs,color="UCX mlx5"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_mlx5,aes(x=X.bytes,y=mbs,color="UCX mlx5", linetype="by node")) + 
-  scale_color_manual(name="Network", values = c(col_ib_intel, col_ob1_tcp, col_ucx_br0, col_ucx_mlx5, col_ucx_ib0, col_ucx_mlx5)) +
-  scale_linetype_manual(name="Run",values=c(1)) + 
-  labs(title="PingPong on THIN node - by node", subtitle="Execution throughput vs size of message") +
-  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5,margin = margin(t = 6)), 
-        plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
-        axis.title = element_text(face = "bold"), 
-        legend.text = element_text(margin = margin(t = 4, b = 4, r=4), size=8), 
-        axis.title.x = element_text(margin = margin(t = 8, b=6)), 
-        axis.title.y = element_text(margin = margin(r = 10,l=8)), 
-        axis.text = element_text(color= "#2f3030", face="bold"),
-        ) +
-  theme(
-#  panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0", size = 2, linetype = "solid"),
-  panel.grid.major = element_line(size = 0.3, linetype = 'solid', colour = "white"), 
-  panel.grid.minor = element_line(size = 0.17, linetype = 'solid', colour = "white")
-  ) + 
-  geom_hline(yintercept=3125, 
-              color = "blue",linetype="dotted", size=0.4) +
-  geom_hline(yintercept=12500, 
-              color = "blue",linetype="dotted", size=0.4) +
-  annotate("text", x=8, y=2260, label= "25 Gbit peak",color="blue") +
-  annotate("text", x=8, y=11800, label= "100 Gbit peak",color="blue")
-
-sp 
-
-```
-
-From this first plot it is evident that **with Intel MPI, UCX OpenMPI InfiniBand** (the default command) **and UCX native IB with mlx5_0:1** device (which is the same as the previous), **the asymptotic bandwith is very high compared to the others protocols/devices and similar to the one expected from the theoretical peak**: more or less my data  **perform like $97\%$ of the theoretical limit** (see eq (2) ).
-
-**UCX with br0 and OB1 with tcp** show a real maximum performance of **about 86%-89% respectively of theoretical bandwidth**: it is a good result if we take into account that tcp protocol is heavier with respect to the native IB one (encoding, no RDMA available). Their latencies are comparable (see table in 'Results' section), but OB1 has a highier bandwidth.
-
-**IPoIB** (aka UCX ib0) happen to have a good latency (see table in 'Results' section) but the bandwidth is not so high and in fact it is comparable to the one of the 25 Gbit Ethernet network.
-
-Now let's look at the performance with the across core and socket configuration.
-
-```{r, echo=FALSE, warning=FALSE, message = FALSE, fig.align='center'}
-#plotting BY CORE/SOCKET openmpi e intel - THIN bandwith
-library(ggplot2)
-sp = ggplot(core_ib,aes(x=X.bytes,y=mbs,color="UCX IB",linetype="by core")) + #4 colore
-  scale_x_continuous(trans='log',name="Size message (Bytes)",breaks=core_ib$X.bytes)  +
-  geom_point(size = 3,shape=20) + geom_line() + 
-  scale_y_continuous(breaks = seq(0,25000,1500), name = expression(bold("Throughput (MB/s)"))) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  geom_point(data=core_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + #2 colore
-  geom_line(data=core_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp",linetype="by core")) +
-  geom_point(data=core_ob1_vader,aes(x=X.bytes,y=mbs,color="OB1 vader"),size = 3,shape=20) + #3 colore
-  geom_line(data=core_ob1_vader,aes(x=X.bytes,y=mbs,color="OB1 vader",linetype="by core")) +
-  geom_point(data=socket_ib,aes(x=X.bytes,y=mbs,color="UCX IB"),size = 3,shape=20) +
-  geom_line(data=socket_ib,aes(x=X.bytes,y=mbs,color="UCX IB",linetype="by socket")) + #4 colore
-  geom_point(data=socket_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + #2 colore
-  geom_line(data=socket_ob1_tcp,aes(x=X.bytes,y=mbs,color="OB1 tcp",linetype="by socket")) +
-  geom_point(data=socket_ob1_vader,aes(x=X.bytes,y=mbs,color="OB1 vader"),size = 3,shape=20) + #3 colore
-  geom_line(data=socket_ob1_vader,aes(x=X.bytes,y=mbs,color="OB1 vader",linetype="by socket")) +
-  geom_point(data=socket_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + #1 colore
-  geom_line(data=socket_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB",linetype="by socket")) +
-  geom_point(data=core_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + #1 colore
-  geom_line(data=core_ib_intel,aes(x=X.bytes,y=mbs,color="Intel IB",linetype="by core")) +
-  scale_color_manual(name="Network", values = c(col_ib_intel, col_ob1_tcp, col_ob1_vader, col_ib)) +
-  scale_linetype_manual(name="Run",values=c(1,2)) + 
-  labs(title="PingPong on THIN node - by core/socket", subtitle="Execution throughput vs size of message") +
-  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5,margin = margin(t = 6)), 
-        plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
-        axis.title = element_text(face = "bold"), 
-        legend.text = element_text(margin = margin(t = 4, b = 4, r=4), size=8), 
-        axis.title.x = element_text(margin = margin(t = 8, b=6)), 
-        axis.title.y = element_text(margin = margin(r = 10,l=8)), 
-        axis.text = element_text(color= "#2f3030", face="bold"),
-        ) +
-  theme(# panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0", size = 2, linetype = "solid"),
-    panel.grid.major = element_line(size = 0.3, linetype = 'solid', colour = "white"), 
-    panel.grid.minor = element_line(size = 0.17, linetype = 'solid', colour = "white")
-  ) +
-  geom_vline(xintercept=32768, 
-              color = "red",linetype="dotted", size=0.4) +
-  geom_vline(xintercept=1048576, 
-              color = "red",linetype="dotted", size=0.4) +
-  geom_vline(xintercept=19922944, 
-              color = "red",linetype="dotted", size=0.4) +
-  annotate("text", x=58000, y=20000, label= "L1",color="red") +
-  annotate("text", x=1800000, y=20000, label= "L2",color="red") +
-  annotate("text", x=29900000, y=20000, label= "L3",color="red")
-
+* parallel phase in which each process:
+  - partitions the dataset
+  - finds the median
+  - sends $right\_kpoints$ to $rank_{right}$ process via `MPI_Send`
+  - compute recursively $build\_tree()$ on the left branch
+* serial phase in which each process is independent:
+  - partitions the dataset
+  - finds the median
+  - compute recursively $build\_tree()$ on the left branch
+  - compute recursively $build\_tree()$ on the right branch
   
-sp
+#### Parallel phase
 
+Here the majors time expenses are the QuickSelect algorithm and the one-to-one communication among processes for exchanging the data of the right branch.
+
+The `MPI_Send`are actually two: one for sending the parameters needed for the recursive call of the  and for acknowledge the size of the kpoints passed to the right branch, whilst the other is for storing those kpoints in the process memory. 
+
+```{c eval=FALSE}
+// Send params for build_kdtree calling on right branch
+int params[] = {N_right, ndim, myaxis, np_size, right_rank, next_depth, max_depth,
+                surplus_np};
+MPI_Send(params, 8, MPI_INT, right_rank, rank, comm);
+
+// Send fraction of points to work on the right branch
+MPI_Send(right_points, N_right * sizeof(kpoint), MPI_BYTE, right_rank, rank, comm);
 ```
 
-From first glance it is clear that these performance are smaller in bandwith, but better in latency (see table in 'Report section') when compared to across nodes configuration. Moreover, **mapping the processes in the same socket show often a better performance than mapping them in separate sockets **. 
 
-The drop in bandwidth before the asymptotic plateau of throughput is common in both the 2 configurations (by sockets, by nodes) and it shows very different performances among different implementations.
-**This pattern happens between 32KB and 16 MB included: after that size, measurements become stable**.
+To simplify the model, let's just consider the second `MPI_Send` and evaluate it:
 
-By plotting the cache lines it is clear that this behavior **must be related to the cache**: in fact, when the size of the PingPong message becomes too large to fit in **L1**, there's an L1 miss and data are retrieved from cache **L2**. This happens too for L2 as the size grows so there is a visible drop in the throughput.
-L1 effects is not clearly visible from the bandwidth ( probably due the latency ), instead for L2 misses after $1$ MB, all implementations start loosing bandwidth.
-In the plateau area, instead, the message size is larger than all caches and a stable bandwith is reached.
+\begin{equation}
+T_{send}(n) = \lambda + \frac{ndim * n * double_{size}}{B}
+\end{equation}
 
-Now let's compare protocols.
-Firstly, **UCX IB shows poor performance before 131 MB** respect to the other protocols and after that size there is an huge increase.
-**Also Intel InfiniBand, this time shows poor performance respect UCX implementation**, and it might be related to the fact that it undergoes large cache misses.
-**OB1** implementation seems to be better by usage of *vader* btl rather than *tcp*, as expected since *vader* is suitable for shared memory transfer.
+with $n$ the number of kpoints, $\lambda$ $[s]$ the latency of the network, $ndim=2$ the number of coordinates exchanged, $double_{size}=8$ $[B]$ is the size of a double in Bytes and $B$ $[B/s]$ is the bandwith of the network.
 
-Now let's have a look at the GPU results in terms of throughput.
+For the QuickSelect algorithm, instead, the complexity in time is, as already illustrated, $O(n)$ on average.
+For the sake of simplicity, let's ignore the fact that for $n \leq 30$ the QuickSort Hybrid approach is used.
 
-```{r, echo=FALSE, warning=FALSE, message = FALSE, fig.align='center'}
-#plotting BY NODE openmpi e intel - GPU bandwith
-library(ggplot2)
-sp = ggplot(node_ib_gpu,aes(x=X.bytes,y=mbs,color="UCX IB")) + 
-  scale_x_continuous(trans='log2',name="Size message (Bytes)",breaks=node_ib_gpu$X.bytes)+scale_y_continuous(breaks = seq(0,13000,1000),name = expression(bold("Throughput (MB/s)")))  +
-  geom_point(size = 3,shape=20) + geom_line()  + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  geom_point(data=node_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + 
-  geom_line(data=node_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp", linetype="by node")) +   
-  geom_point(data=node_ucx_br0_gpu,aes(x=X.bytes,y=mbs,color="UCX br0"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_br0_gpu,aes(x=X.bytes,y=mbs,color="UCX br0", linetype="by node")) +   
-  geom_point(data=node_ucx_ib0_gpu,aes(x=X.bytes,y=mbs,color="UCX ib0"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_ib0_gpu,aes(x=X.bytes,y=mbs,color="UCX ib0", linetype="by node")) +  
-  geom_point(data=node_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + 
-  geom_line(data=node_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB", linetype="by node")) +
-  geom_point(data=node_ucx_mlx5_gpu,aes(x=X.bytes,y=mbs,color="UCX mlx5"),size = 3,shape=20) +   
-  geom_line(data=node_ucx_mlx5_gpu,aes(x=X.bytes,y=mbs,color="UCX mlx5", linetype="by node")) + 
-  scale_color_manual(name="Network", values = c(col_ib_intel, col_ob1_tcp, col_ucx_br0, col_ucx_mlx5, col_ucx_ib0, col_ucx_mlx5)) +
-  scale_linetype_manual(name="Run",values=c(1)) + 
-  labs(title="PingPong on GPU node - by node", subtitle="Execution throughput vs size of message") +
-  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5,margin = margin(t = 6)), 
-        plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
-        axis.title = element_text(face = "bold"), 
-        legend.text = element_text(margin = margin(t = 4, b = 4, r=4), size=8), 
-        axis.title.x = element_text(margin = margin(t = 8, b=6)), 
-        axis.title.y = element_text(margin = margin(r = 10,l=8)), 
-        axis.text = element_text(color= "#2f3030", face="bold"),
-        ) +
-  theme(
-#  panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0", size = 2, linetype = "solid"),
-  panel.grid.major = element_line(size = 0.3, linetype = 'solid', colour = "white"), 
-  panel.grid.minor = element_line(size = 0.17, linetype = 'solid', colour = "white")
-  ) + 
-  geom_hline(yintercept=3125, 
-              color = "blue",linetype="dotted", size=0.4) +
-  geom_hline(yintercept=12500, 
-              color = "blue",linetype="dotted", size=0.4) +
-  annotate("text", x=8, y=2260, label= "25 Gbit peak",color="blue") +
-  annotate("text", x=8, y=11800, label= "100 Gbit peak",color="blue")
-sp 
+This phase continues until there are no idle processes anymore, thus it is performed a number of $log_2(np)$ times, with $np$ number of processes.
 
-```
+Thus, we can model the execution time:
 
-As can be inferred from the previous plot, Gpu nodes behave like thin node, no major difference pops out, but **GPU node is a bit slower (about 15%) ** than thin node, *as already discovered in the exercise 1*. (ricorda aggiungere dati sul gpu ex1)
+\begin{equation}
+T_{parallel}(n, np) = \sum_{i=0}^{log_2(np)} T_{send}(\frac{n}{2^{i+1}}) + c\dot(\frac{n}{2^{i+1}})
+\end{equation}
 
-This can be caused either by the fact that not being able to reverse a whole node (if not 2 in the across node configuration) or, more likely, by the different CPU frequencies and node configurations: remember that even if gpu CPU has a theoretical higher maximum frequency (2.70GHz) with respect to the one of the thin node (2.60GHz), these frequencies are much smaller when running simultaneously on several cores.
+with $c$ a constant proper of this QuickSelect algorithm.
 
-Cache size are the same as thin node, then cache effects are similar, as it is shown here:
+#### Serial phase
 
-```{r, echo=FALSE, warning=FALSE, message = FALSE, fig.align='center'}
-#plotting BY CORE/SOCKET openmpi e intel - GPU bandwith
-library(ggplot2)
-sp = ggplot(core_ib_gpu,aes(x=X.bytes,y=mbs,color="UCX IB",linetype="by core")) + #4 colore
-  scale_x_continuous(trans='log',name="Size message (Bytes)",breaks=core_ib_gpu$X.bytes)  +
-  geom_point(size = 3,shape=20) + geom_line() + 
-  scale_y_continuous(breaks = seq(0,25000,1500), name = expression(bold("Throughput (MB/s)"))) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  geom_point(data=core_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + #2 colore
-  geom_line(data=core_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp",linetype="by core")) +
-  geom_point(data=core_ob1_vader_gpu,aes(x=X.bytes,y=mbs,color="OB1 vader"),size = 3,shape=20) + #3 colore
-  geom_line(data=core_ob1_vader_gpu,aes(x=X.bytes,y=mbs,color="OB1 vader",linetype="by core")) +
-  geom_point(data=socket_ib_gpu,aes(x=X.bytes,y=mbs,color="UCX IB"),size = 3,shape=20) +
-  geom_line(data=socket_ib_gpu,aes(x=X.bytes,y=mbs,color="UCX IB",linetype="by socket")) + #4 colore
-  geom_point(data=socket_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp"),size = 3,shape=20) + #2 colore
-  geom_line(data=socket_ob1_tcp_gpu,aes(x=X.bytes,y=mbs,color="OB1 tcp",linetype="by socket")) +
-  geom_point(data=socket_ob1_vader_gpu,aes(x=X.bytes,y=mbs,color="OB1 vader"),size = 3,shape=20) + #3 colore
-  geom_line(data=socket_ob1_vader_gpu,aes(x=X.bytes,y=mbs,color="OB1 vader",linetype="by socket")) +
-  geom_point(data=socket_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + #1 colore
-  geom_line(data=socket_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB",linetype="by socket")) +
-  geom_point(data=core_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB"),size = 3,shape=20) + #1 colore
-  geom_line(data=core_ib_intel_gpu,aes(x=X.bytes,y=mbs,color="Intel IB",linetype="by core")) +
-  scale_color_manual(name="Network", values = c(col_ib_intel, col_ob1_tcp, col_ob1_vader, col_ib)) +
-  scale_linetype_manual(name="Run",values=c(1,2)) + 
-  labs(title="PingPong on GPU node - by core/socket", subtitle="Execution throughput vs size of message") +
-  theme(plot.title = element_text(size = 12, face = "bold",hjust = 0.5,margin = margin(t = 6)), 
-        plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 4, b = 7), face = "italic"), 
-        axis.title = element_text(face = "bold"), 
-        legend.text = element_text(margin = margin(t = 4, b = 4, r=4), size=8), 
-        axis.title.x = element_text(margin = margin(t = 8, b=6)), 
-        axis.title.y = element_text(margin = margin(r = 10,l=8)), 
-        axis.text = element_text(color= "#2f3030", face="bold"),
-        ) +
-  theme(#panel.background = element_rect(fill = "#ebeef0", colour = "#d5dce0", size = 2, linetype = "solid"),
-    panel.grid.major = element_line(size = 0.3, linetype = 'solid', colour = "white"), 
-    panel.grid.minor = element_line(size = 0.17, linetype = 'solid', colour = "white")
-  ) +
-  geom_vline(xintercept=32768, 
-              color = "red",linetype="dotted", size=0.4) +
-  geom_vline(xintercept=1048576, 
-              color = "red",linetype="dotted", size=0.4) +
-  geom_vline(xintercept=19922944, 
-              color = "red",linetype="dotted", size=0.4) +
-  annotate("text", x=58000, y=20000, label= "L1",color="red") +
-  annotate("text", x=1800000, y=20000, label= "L2",color="red") +
-  annotate("text", x=29900000, y=20000, label= "L3",color="red")
-  
-sp
+Here each process works independently on its subtree, so let's evaluate the number of iterations.
+The algorithm stops when $n=1$ and at each recursion the kpoints are split in half by the median, so the number of iterations are $log_2(n) - log_2(np)$.
+The execution model is:
 
-```
+\begin{equation}
+T_{serial}(n, np) = \sum_{i=log_2(np)}^{log_2(n)} 2^{i-log_2(np)+1} + c\dot(\frac{n}{2^{i+1}})
+\end{equation}
 
-### Results
+with again $c$ the constant of the QuickSelect algorithm and $2^{i-log_2(np)+1}$ the term for the double partitioning operation at each subsequent split of the dataset.
 
-Here are shown the estimation via least square methods of the latency $\lambda_{net}$ and bandwidth $b_{net}$ of the networks used. To see the fit model estimation look in the folder *section2/mydata/csv-files/*.
+#### Total performance MPI
 
-```{r, echo=FALSE, out.width="55%", fig.cap="Latency and bandwith fit estimation", fig.align='center'}
-knitr::include_graphics("./img/fitted_perf.png")
-```
+The overall execution time is thus:
 
-# Exercise 3
-## Jacobi solver
-It's a prototype for as stencil-based iterative method used in numerical analysis to solve partial differential equations.
+\begin{equation}
+T_{exec}(n, np) = T_{serial}(n, np) + T_{parallel}(n, np)
+\end{equation}
 
-In its most straightforward form, it can be used for solving the diffusion equation for a scalar function $\Phi (r,t)$:
+#### Model evaluation
 
-$$\frac{\delta \Phi}{\delta t} = \Delta \Phi$$
-on a rectangular lattice subject to Dirichlet boundary conditions. The differential operators are discretized using finite differences:
-$$\frac{\delta \Phi (x_i, y_i)}{\delta t} = \frac{\Phi (x_i+1, y_i)+\Phi (x_i-1, y_i)-2\Phi (x_i, y_i)}{\delta x^2} + \frac{\Phi (x_i+1, y_i+1)+\Phi (x_i, y_i-1)-2\Phi (x_i, y_i)}{\delta y^2}$$
-In each time step, a correction $\delta \Phi$ to $\Delta \Phi$ at coordinate $(x_i,y_i)$ is calculated using the “old” values from the four next neighbor points. Of course, the updated $\Phi$ values must be written to a second array. After all points have been updated (a “sweep”), the algorithm is repeated till some basic convergence bounded by a threshold $eps$.
+To check the performance of the program, several measurements has been taken on an empty ORFEO thin node mapping the processes by socket.
 
-The following is a 2D Implementation of the Jacobi algorithm on an N × N lattice, with a convergence criterion added, taken by G.Hager and G.Wellein "Introduction to high performance computing for scientists and engineers":
+The value of $\lambda=0.485 \times 10^{-6}$ $[s]$ and $B= 5530.801 \times 10^{6}$ $[B/s]$ of the network has been measured by means of **IMB-MPI1 PingPong benchmark** across sockets.
+
+Here I report a comparison between the mean of the 10 measurements with a fixed amount of data $n=10^8$.
+
+Hence, the overall complexity model seems to describe well the experimental results.
+
+### Strong scalability
+
+A number of 10 measurements have been performed for each of the following parameters used:
+
+* $n = 10^8$
+* $np \in {1,2,4,8,16}$
+
+The following graph reports the mean among the 10 tests for each of the 5 configurations:
+
+We can see that both MPI and OpenMP programs scale good, but OpenMp version has a slightly better speedup.
+
+### Week scalability
+
+A number of 10 measurements have been performed for each of the following parameters used:
+
+* $n = 10^8 \times p$
+* $np \in {1,2,4,8,16}$
+
+The following graph reports the mean among the 10 tests for each of the 5 configurations:
+
+We can see that both MPI and OpenMp do not scale weakly good, since linear increase of workload and processes/threads doesn't lead to constant time.
+The reason is due to the fact that only from a certain depth of the tree there is no workload imbalance: at the beginning instead the first process/thread must partion an almost entire dataset which keeps growing with weak scalability.
+
+## Discussion
+
+There are a few adjustments that could be made in order to perform better and there are several implementations to be improved.
+
+#### False sharing in OpenMP
+
+In the OpenMP program there is a problem of false sharing and thus an increase workload to keep the cache coherence.
+
+Tasks work with a specific and unique subsection of the kpoints in which they find the median element and partition the dataset.
+
+Anyway, at a certain point, two tasks may work on adjacent subsection of the dataset which are close in the cache, and when swapping those close elements in the 3-ways partion they might fall into false sharing errors.
+
+If we take into account that the cache lines are usually $64B$ long and that our data have 2 coordinates of doubles (aka $2 \times 8B$), then the number of kpoints storable in a cache line is 4.
+
+The issue might be solved by putting an offset to each kpoint when generated and then take it into account when dealing with accessing/writing/swapping it.
+
+This issue is anyway extremely costly in terms of memory expense, and considering that sorting operations of at most 4 elements are so small in number, we didn't use this fix.
+
+#### MPI extension to any number of processes
+
+It should be possible to extent the amount of processes involved in the MPI program by simply distribute some workload of surplus non-working processes at the level of $depth_{max}$. 
+
+With surplus process is meant a process assigned to a level of the tree which does not guarantee that every splits has a process ready to take on the right branch. Only some splits have a surplus process, starting from the leftmost split in the tree.
+
+So in the previous case of expected output for 10 processes (i.e. max_depth=3):
+
 \scriptsize
-
 ```{bash eval=FALSE}
-double precision, dimension(0:N+1,0:N+1,0:1) :: phi 
-double precision :: maxdelta,eps
-  integer :: t0,t1
-  eps = 1.d-14 ! convergence threshold 
-  t0=0;t1=1
-  maxdelta = 2.d0*eps
-  do while(maxdelta.gt.eps)
-  maxdelta = 0.d0
-do k = 1,N
-  do i = 1,N
-    phi(i,k,t1) = ( phi(i+1,k,t0) + phi(i-1,k,t0)
-               + phi(i,k+1,t0) + phi(i,k-1,t0) ) * 0.25
-    maxdelta = max(maxdelta,abs(phi(i,k,t1)-phi(i,k,t0)))
-enddo 
-  enddo
-! swap arrays
-    i = t0 ; t0=t1 ; t1=i
-enddo
-```
-\normalsize
+--- level 0 ----
+rank = 0 -> right_rank = 4
+--- level 1 ----
+rank = 0 -> right_rank = 2
+rank = 4 -> right_rank = 6
+--- level 2 ----
+rank = 0 -> right_rank = 1
+rank = 2 -> right_rank = 3
+rank = 4 -> right_rank = 5
+rank = 6 -> right_rank = 7
 
-In a parallel computation, the core of the code implementation is similar but:
+Then surplus processes come to play:
+rank = 0 -> right_rank = 8
+rank = 1 -> right_rank = 9
+rank = 2 -> right_rank = -1
+rank = 3 -> right_rank = -1
 
-- convergence criterion needs to be computed globally (collective reduce operations)
-- boundary layers must retrieve info form adjacent subdomains (halo layers exchange) in order to update their values.
-
-For this exercise, we used as **Jacobi solver 3D program given by the professor Cozzini written in FORTRAN**.
-
-## Performance model
-In order to predict 3D Jacobi model performance $P$ the following model has been used:
-\begin{equation}
-\tag{*}
-P(L,N)=\frac{L^3N}{T_s(L)+T_c(L,N)}\space \bigg[ \frac{MLUP}{s} \bigg]
-\end{equation}
-where:
-
-* $L$ is the subdomain size, assuming it's a cube..
-* $N= N_x N_y N_z$ is the number of the processes involved. 
-* $L^3N$ is the problem size. The amount of work, therefore, increase linearly as a function of $N$; hence a weak scalability will be considered. 
-* $MLUP/s$ is the unit for measuring this performance (Mega Lactice Updates Per sec).
-* $T_s$ is the time for an entire sweep, thus it can estimated using the program as serial.
-* $T_c$ represent the communication time for total halo exchanges. 
-
-
-The latter is modeled by simply estimating the latency $\lambda$, bandwidth $b$ of the network and messages size $c$.
-
-In a 3D problem, the number of points used to estimate a point of the subdomain is not 4 (5 stencil case) but 6 instead (7 stencil case). When processes communicates whit each other they simultaneously sends each of the 6 point-to-point communication at the same time, so we need to consider full duplex data transfer for bandwidth.
-
-Moreover we assume that the time for copying the halo to/from an intermediate buffer and the communication of a process with itself come at no costs.
-$T_c$ then can be model as:
-
-\begin{equation}
-\tag{**}
-T_c(L,N)=\frac{c(L)}{b}+k\lambda\space [s]
-\end{equation}
-
-where:
-
-* $c(L)$ is the amount of data volume transferred over a node's network link.
-* $b$ is the bidirectional bandwith of the network link
-* $\lambda$ is the latency
-* k is the largest number of coordinate directions in which $N_i > 1$.
-
-Then $c$ is, :
-\begin{equation}
-\tag{***}
-c(L)=L^2k\cdot2\cdot8\space [B]
-\end{equation}
-
-where:
-
-* $k$ represents the number of directions in which the halo exchange occurs.
-* $L^2$ is the halo surface to transmit.
-* $2$ is for taking into account the bidirectional halo exchange.
-* $8$ is for double conversion, assuming that the grid points in the subdomain are double floating points.
-
-## Domain decomposition
-Since we use a **3D Jacobi FORTRAN program (column-major order)**, there are domains decomposition that are more suitable than others when dealing with contiguous location in memory for halo exchange. 
-
-In order to find the best decomposition possible, several tests has been done in order to find the most performing permutation of ($N_x, N_y, N_z$).
-
-**With $N=6$ take $(6,1,1)$ $(1,6,1)$ $(1,1,6)$ decompositions when $L=1200$ on a thin node: experimentally, the first configuration behave better** than the other in terms of MLUP/s (oss. use large values of $L$ to see this effect). Example:
-
-```{r, dpi=600, fig.width=14, fig.height=20,echo=FALSE,eval=TRUE}
-#install.packages("kableExtra")
-library(kableExtra)
-last=read.csv("./section3/example.csv")
-last=last[,c("mapping","nx","ny","nz","perf")]
-kbl(last,booktabs=T,escape=F, col.names = linebreak(c("Mapping","Nx","Ny","Nx","MLUP/s")))%>%
-column_spec(1, bold=T) %>%
-collapse_rows(columns = 1:1, latex_hline = "major", valign = "middle")
 ```
 
-**Instead when comparing always with $N=6$, $(6,1,1)$ and $(3,2,1)$ the first has more buffering cost involved but the latter has more halo exchanges, thus both the two configurations will be taken into account**.
+This implementation has been carried out but not completed in my MPI version.
 
-## Results
-As a first step I have tried to **compile and run the code on single processor of a thin and gpu node to estimate the serial time on one single core $T_s$**.
+#### Hybrid approch
 
-I have used **OpenMPI implementation on ORFEO both on thin and gpu nodes** using native IB protocol.
+It should be possible to add in the MPI version, an OpenMP section that make usage of tasks: instead of going serial from a certain point on, one could set a pragma parallel region inside each process.
 
-The **size of the subdomain $L=700$ was fixed and used both for gpu and thin** measurements since, due to RAM size on the gpu node (see `pbsnodes -ajS` in Exercise 2), it corrisponds to the maximum amount of memory availble for comparison between the two different nodes.
+#### Parallel QuickSelect in OpenMP
 
-The Jacobi program was runned on:
+Since we are working with tasks, it is possible to create sub tasks that perform the QuickSelect and 3-ways partion algorithms in parallel. In this way, one should really be careful when dealing with the data since serious false sharing errors might occur. 
 
-* 4/8/12 processes within the same thin node pinning the MPI processes within the same socket. 
-* 4/8/12 processes within the same thin node pinning the MPI processes across two sockets.
-* 12/24/48 processes using two thin nodes.
-* 12/24/48 processes using one gpu node mapping by core (hyperthreading is enabled).
-* 12/24/48 processes using one gpu node mapping by socket (hyperthreading is enabled).
+#### Code optimization 
 
-**The *jacobi3D* program prints out the performance in $MLUP/s$ as last column for each run: I have taken the mean of the 10 results**.
-Along with the performance measurements, I took the elapsed time by means of `/usr/bin/time -f "user : %U system: %S elapsed: %e CPU: %P CMD: %C \n"` run command.
-
-The following is an example of running with $L=700$ and $N=(4,1,1)$:
-\scriptsize
-
-```{bash eval=FALSE}
-# Threadlevel provided:        3 out of        0        1        2        3
-  spat_dim , proc_dim, PBC ? 
-           1 -Dim Input         2800           4 T
-           2 -Dim Input          700           1 T
-           3 -Dim Input          700           1 T
-#   0 Process grid   4   1   1
-           0           3           2
-           2           3           2
-           3           3           2
-           1           3           2
-#   0  Allocated 2 arrays with a total of  5535.17      Mbytes 
-# StartResidual    0.00000000000    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06243716300  3.06242734200  2.98796024800 2.99414415400
-  Residual 12273333.3238  MLUPs 448.009192344    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06078858000  3.06078676400  2.98838307400 2.99486265400
-  Residual 2041666.66667  MLUPs 448.250496282    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06090752400  3.06090532700  2.98793178100 2.99505510000
-  Residual 434799.382550  MLUPs 448.233077688    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06095547000  3.06095308700  2.98808474500 2.99490125800
-  Residual 129179.526716  MLUPs 448.226056683    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06516349800  3.06516215100  2.99001243700 2.99797766000
-  Residual 52905.8427676  MLUPs 447.610706866    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06256750200  3.06256510400  2.98815335100 2.99561585600
-  Residual 27258.4295825  MLUPs 447.990125639    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06197104500  3.06196926100  2.98880531000 2.99486067300
-  Residual 16225.1238619  MLUPs 448.077391927    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06272575000  3.06272477100  2.98845891200 2.99545644500
-  Residual 10594.4563848  MLUPs 447.966978434    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06178146800  3.06177916200  2.98808213100 2.99487845400
-  Residual 7372.72712122  MLUPs 448.105135634    
-  4  Maxtime , Mintime + JacobiMi , JacobiMa  3.06086679800  3.06086465500  2.98821124300 2.99498761300
-  Residual 5375.90215905  MLUPs 448.239041600    
-```
-\normalsize
-
-The following tables show the results of performance from relations $(*)$, $(**)$ and $(***)$ for both thin and gpu node with different mapping of the processes. 
-
-For evaluating $T_c$, the bidirectional bandwith $b$ and latency $\lambda$ considered are taken by Intel® IMB-MPI1 PingPing Benchmark.
-
-```{r, echo=FALSE, out.width="75%", fig.align='center'}
-knitr::include_graphics("./img/jacobi_thin_core.png")
-```
-
-```{r, echo=FALSE, out.width="75%", fig.align='center'}
-knitr::include_graphics("./img/jacobi_thin_socket.png")
-```
-
-```{r, echo=FALSE, out.width="75%", fig.align='center'}
-knitr::include_graphics("./img/jacobi_thin_node.png")
-```
-
-
-**The model seems quite accurate for the thin node: our data seems to differ of about 3% with respect to the model, expect for the node mapping with 12 process in which it arise up to 5%**.
-
-**Mapping by socket lead a sightly better performance respect core mapping** and this is not what expected by theoretical model.
-**Socket mapping leads to poor communication performance but it exploits better the memory allocation**. When one socket is filled with 12 processes the entire grid is stored on socket competence, but spreading processes across 2 socket lead to better exploit of bandwidth using different memory controller and then all memory channel available. This solver at each iteration elaborates an huge amount of memory, given $L=700$ and $12$ worker at least 250 GB of ram are elaborated and **more than one third of the memory is saturated**.
-
-Also with map-by node option experimentally we obtain better results when several processes are involved.
-
-```{r, echo=FALSE, out.width="75%", fig.align='center'}
-knitr::include_graphics("./img/jacobi_gpu_core.png")
-```
-
-```{r, echo=FALSE, out.width="75%", fig.align='center'}
-knitr::include_graphics("./img/jacobi_gpu_socket.png")
-```
-
-**For the gpu node, the model doesn't seem quite accurate: data in the socket mapping differs of about 5%, 10%, 33% (using 12, 24, 48 processes respectively) with respect to the model, whilst in the core mapping they do about 10%, 10%, 33%**.
-
-On gpu node differences on socket and core mapping are even bigger: **again we can guess the memory as main cause**. **Gpu node setup even if has higher CPU frequency, doesn't exploit all possible memory channel**. When worker number grow over physical core number the real performance, due hyper-threading, goes dramatically down respect the model. Also the execution time show poor performance with 48 workers.
-
-# Exercise 1
-
-## 3D matrix sum
-
-Since a 3D array in memory can be represented with a unique linear array, the most effective way to sum it in parallel is using collective operation. 
-
-**The shape of the array doesn't make any difference, also the virtual topology and its relative domain decomposition**. We can assume that the problem is not sensible to any topology, since that there is no need of communication between neighbors. The most efficient way is to use `MPI_Scatterv` and `MPI_Gatherv` collective routine. 
-
-**The expectations for this code are not so high in terms of scalability**, matrix sum assuming $n$ elements each, require $2n$ memory read accesses, $n$ memory write, a lot of communication and **only** $n$ floating point operations. Parallel portion of code then is small respect serial one. **Using Ahmdal's law we can make a prediction of speed up bound**.
-
-Testing parallel code with two $2400\times1000\times700$ matrices filled with double and using only one processor we can see that the parallel part take only $2.63$ seconds over a total runtime of $49$ seconds, representing about $5\%$ of execution time (Elapsed is measured using /usr/bin/time and detailed Scatter and Gather with `MPI_Wtime()` ). Total execution take into account of matrix initialization and error checking.
-
-This graph represent then the theoretical maximum speedup supported by Ahmdal's law assuming roughly only $5\%$ of parallel code and communication code and serial code in remaining part and fixed respect processors numbers. This experimentally is a good approximation and catch the trend between [1,24] processes.
-
-
-```{r ,echo=FALSE,message=FALSE}
-options(warn=-1)
-core_matrix=read.csv("section1/matrix/mydata/core.csv")
-socket_matrix=read.csv("section1/matrix/mydata/socket.csv")
-core_matrix$X.np=core_matrix$X.np+1
-socket_matrix$X.np=socket_matrix$X.np+1
-core_matrix=core_matrix[c(1,4,8,12,16,20,24),]
-socket_matrix=socket_matrix[c(1,4,8,12,16,20,24),]
-rownames(core_matrix)=c()
-rownames(socket_matrix)=c()
-speed_teo=core_matrix
-p=0.13
-s=1-p
-speed_teo$total=1/(s+p/speed_teo$X.np)
-t1=kbl(core_matrix, booktabs = T, align = "c",escape=F, col.names = linebreak(c("N° procs", "Scatter\n(S)","Gather\n(S)","Parallel\n(S)","Total\n(S)"), align = "c")) %>%
-column_spec(1, bold=T) %>% 
-column_spec(4, color = "white",
-background = spec_color(core_matrix$parallel, end = 0.5,alpha = 0.2,option = "plasma"),
-popover = paste("am:",core_matrix$parallel))
-t2=kbl(socket_matrix, booktabs = T, align = "c",escape=F, col.names = linebreak(c("N° procs", "Scatter\n(S)","Gather\n(S)","Parallel\n(S)","Total\n(S)"), align = "c")) %>%
-column_spec(1, bold=T) %>% 
-column_spec(4, color = "white",
-background = spec_color(socket_matrix$parallel, end = 0.5,alpha = 0.2,option = "plasma"),
-popover = paste("am:",socket_matrix$parallel))
-knitr::kables(list(t1,t2),caption = "Matrix sum timings")
-```
-
-```{r,echo=FALSE, dpi=600, fig.width=10, fig.height=2}
-sp = ggplot(socket_matrix,aes(x=X.np, y=socket_matrix$total[1]/socket_matrix$total, color="Socket")) +
-  scale_x_continuous(name="N procs",breaks=socket_matrix$X.np)+
-  scale_y_continuous(name="Speedup",breaks = seq(0.9,1.4,by=0.1),limit = c(0.9, 1.2))  + geom_point() + geom_line()  +
-  theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1)) + 
-  geom_point(data=speed_teo,aes(x=X.np,y=total,color="Teo")) + geom_line(data=speed_teo,aes(x=X.np,y=total,color="Teo"))+ 
-  geom_point(data=core_matrix,aes(x=X.np,y=core_matrix$total[1]/core_matrix$total,color="Core")) + geom_line(data=core_matrix,aes(x=X.np,y=core_matrix$total[1]/core_matrix$total,color="Core"))+ labs(title="Matrix sum speedup", subtitle="")  +
-      theme(plot.title = element_text(size = 13, face = "bold",hjust = 0.5,margin = margin(t = 12)), plot.subtitle = element_text(size = 10, hjust = 0.5, margin = margin(t = 7, b = 10), face = "italic"), axis.title = element_text(face = "bold"), legend.text = element_text(margin = margin(t = 7, b = 7, r=12)), axis.title.x = element_text(margin = margin(t = 10, b=10)), axis.title.y = element_text(margin = margin(r = 10,l=10)), axis.text = element_text(color= "#2f3030", face="bold"))+
-  scale_color_manual(name="Mapping", values = c(10,12,13))
-```
-
-```{r, dpi=600, fig.width=10, fig.height=4,echo=FALSE,message=FALSE}
-sp
-```
+As always, it should be possibile to optimize the code reducing the amount of overhead, setting loop unrolling etc..
